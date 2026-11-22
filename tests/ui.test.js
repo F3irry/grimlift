@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf8');
 const html = read('../index.html');
 const css = read('../src/style.css');
-const doc = new DOMParser().parseFromString(html, 'text/html');
+// Drop <link> tags so happy-dom doesn't try to fetch stylesheets.
+const doc = new DOMParser().parseFromString(html.replace(/<link[^>]*>/g, ''), 'text/html');
 
 /** Innermost CSS rules as { selectors: string[], body: string }. */
 function cssRules(text) {

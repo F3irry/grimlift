@@ -7,71 +7,145 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=UnifrakturCook:wght@700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=UnifrakturCook:wght@700&display=swap"
     />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <main class="crypt">
-      <header class="sigil">
-        <h1>Grimlift</h1>
-        <p class="motto">Every rep an offering. Every record a rite.</p>
-        <div class="stats">
-          <div class="level" aria-label="Level">
-            <span class="level-label">Level</span>
-            <span id="level" class="level-num">1</span>
-          </div>
-          <div class="xp">
-            <div class="xp-text"><span id="xp-current">0</span> / <span id="xp-needed">100</span> XP to next level</div>
-            <div class="xp-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="xp-bar">
-              <div class="xp-fill" id="xp-fill"></div>
-            </div>
-            <div class="xp-total">Total <span id="xp-total">0</span> XP · <span id="pb-levels">0</span> levels from records</div>
-          </div>
-        </div>
+    <div class="crypt">
+      <header class="topbar">
+        <a href="#/log" class="brand"><h1>Grimlift</h1></a>
+        <nav id="nav" class="nav" aria-label="Pages">
+          <a href="#/log" data-route="log">Log</a>
+          <a href="#/profile" data-route="profile">Profile</a>
+          <label class="switcher">
+            <span class="sr-only">Active profile</span>
+            <select id="profile-switch"></select>
+          </label>
+        </nav>
       </header>
 
-      <div id="omen" class="omen" role="status" aria-live="polite" hidden></div>
-
-      <section class="panel">
-        <h2>Tonight's Rite</h2>
-        <form id="set-form" class="set-form" autocomplete="off" novalidate>
-          <label>
-            Exercise
-            <input id="exercise" name="exercise" list="exercise-list" placeholder="Back Squat" required />
-            <datalist id="exercise-list"></datalist>
-          </label>
-          <label>
-            Weight
-            <input id="weight" name="weight" type="number" inputmode="decimal" min="0" step="any" placeholder="135" required />
-          </label>
-          <label>
-            Reps
-            <input id="reps" name="reps" type="number" inputmode="numeric" min="1" step="1" placeholder="5" required />
-          </label>
-          <button type="submit" class="btn">Add set</button>
-        </form>
-        <p id="form-error" class="error" role="alert"></p>
-
-        <ol id="draft-sets" class="sets"></ol>
-        <p id="draft-empty" class="empty">No sets yet. Log one above, then seal the rite.</p>
-        <button id="complete" class="btn btn-blood" type="button">Complete workout</button>
+      <section id="status" class="status" aria-label="Progress">
+        <div id="level-badge" class="level">
+          <span class="level-label">Level</span>
+          <span id="level" class="level-num">1</span>
+        </div>
+        <div class="xp">
+          <div class="xp-text"><span id="xp-current">0</span> / <span id="xp-needed">100</span> XP to next level</div>
+          <div class="xp-bar" role="progressbar" aria-label="XP toward next level" aria-valuemin="0" aria-valuemax="100" id="xp-bar">
+            <div class="xp-fill" id="xp-fill"></div>
+          </div>
+          <div class="xp-total"><span id="xp-total">0</span> XP total · record levels: <span id="pb-levels">0</span></div>
+        </div>
       </section>
 
-      <div class="columns">
-        <section class="panel">
-          <h2>Records</h2>
-          <ul id="bests" class="records"></ul>
-          <p id="bests-empty" class="empty">Your first set of each exercise sets its record.</p>
+      <main>
+        <section id="onboard-page" class="panel page" hidden>
+          <h2>Who enters the crypt?</h2>
+          <p class="lede">Make a profile so your lifts, XP, and records are yours alone. It stays on this device. No password.</p>
+          <form id="new-profile-form" class="profile-form" autocomplete="off" novalidate>
+            <label>Name <input name="name" maxlength="40" required placeholder="Your name" /></label>
+            <label>Preferred unit
+              <select name="unit"><option value="kg">kg</option><option value="lb">lb</option></select>
+            </label>
+            <label><span>Body weight <span class="hint">(optional)</span></span>
+              <input name="bodyWeight" type="number" inputmode="decimal" min="0" step="any" />
+            </label>
+            <label class="wide"><span>Goal <span class="hint">(optional)</span></span>
+              <input name="goal" maxlength="140" placeholder="Bench 100 kg by summer" />
+            </label>
+            <button type="submit" class="btn btn-blood wide">Create profile</button>
+          </form>
+          <p id="new-profile-error" class="error" role="alert"></p>
         </section>
 
-        <section class="panel">
-          <h2>Chronicle</h2>
-          <ul id="history" class="history"></ul>
-          <p id="history-empty" class="empty">No completed workouts yet.</p>
+        <section id="log-page" class="panel page" hidden>
+          <h2>Log a lift</h2>
+          <form id="log-form" class="log-form" autocomplete="off" novalidate>
+            <label class="f-exercise">Exercise
+              <input id="exercise" name="exercise" list="exercise-list" placeholder="Back Squat" required />
+            </label>
+            <label>Sets
+              <input id="sets" name="sets" type="number" inputmode="numeric" min="1" max="50" step="1" placeholder="3" required />
+            </label>
+            <label>Reps
+              <input id="reps" name="reps" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="5" required />
+            </label>
+            <label>Weight
+              <input id="weight" name="weight" type="number" inputmode="decimal" min="0" step="any" placeholder="100" required />
+            </label>
+            <label>Unit
+              <select id="unit" name="unit"><option value="kg">kg</option><option value="lb">lb</option></select>
+            </label>
+            <button id="log-btn" type="submit" class="btn btn-blood f-submit">Log it</button>
+            <datalist id="exercise-list"></datalist>
+          </form>
+          <p id="log-error" class="error" role="alert"></p>
+          <div id="pb-alert" class="pb-alert" role="status" aria-live="assertive" hidden></div>
+          <h3>Recent</h3>
+          <ol id="recent" class="entries"></ol>
+          <p id="recent-empty" class="empty">Nothing logged yet. Your first lift sets the bar.</p>
         </section>
+
+        <section id="profile-page" class="page" hidden>
+          <div class="panel">
+            <h2 id="profile-title">Profile</h2>
+            <p id="profile-goal" class="goal"></p>
+            <dl class="stats-grid">
+              <div><dt>Level</dt><dd id="st-level">1</dd></div>
+              <div><dt>Total XP</dt><dd id="st-xp">0</dd></div>
+              <div><dt>Lifts logged</dt><dd id="st-entries">0</dd></div>
+              <div><dt>Total sets</dt><dd id="st-sets">0</dd></div>
+              <div><dt>Body weight</dt><dd id="st-bw">—</dd></div>
+            </dl>
+          </div>
+
+          <div class="columns">
+            <div class="panel">
+              <h3>Records</h3>
+              <ul id="records" class="records"></ul>
+              <p id="records-empty" class="empty">Your first lift of each exercise sets its record.</p>
+            </div>
+            <div class="panel">
+              <h3>Details</h3>
+              <form id="edit-profile-form" class="profile-form" autocomplete="off" novalidate>
+                <label>Name <input name="name" maxlength="40" required /></label>
+                <label>Preferred unit
+                  <select name="unit"><option value="kg">kg</option><option value="lb">lb</option></select>
+                </label>
+                <label><span>Body weight <span class="hint" id="bw-unit"></span></span>
+                  <input name="bodyWeight" type="number" inputmode="decimal" min="0" step="any" />
+                </label>
+                <label class="wide">Goal <input name="goal" maxlength="140" /></label>
+                <button type="submit" class="btn wide">Save details</button>
+              </form>
+              <p id="edit-profile-msg" class="error" role="status"></p>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Chronicle</h3>
+            <ol id="history" class="entries"></ol>
+            <p id="history-empty" class="empty">No lifts logged yet.</p>
+          </div>
+
+          <div class="panel danger">
+            <h3>Delete profile</h3>
+            <p>Removes this profile and every lift, XP point, and record in it. This cannot be undone.</p>
+            <button id="delete-profile" type="button" class="btn btn-danger">Delete this profile</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="fx-layer" class="fx-layer" aria-hidden="true"></div>
+    <div id="ascend" class="ascend" role="status" aria-live="assertive" hidden>
+      <div class="ascend-inner">
+        <p class="ascend-kicker">You have ascended</p>
+        <p id="ascend-level" class="ascend-level">Level 2</p>
+        <p class="ascend-hint">Click anywhere to continue</p>
       </div>
-    </main>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
