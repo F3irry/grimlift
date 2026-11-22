@@ -17,15 +17,31 @@ alerts, and level-ups. Everything runs in your browser and is saved in
   personal-best alert and gives an instant +1 level. The first time you log an
   exercise sets its baseline.
 - **Profiles**: several people can use Grimlift on one device. Each profile has
-  its own name, preferred unit, body weight, goal, lifts, XP, level, and
-  records, and a profile page with stats and a full history (lifts can be
+  its own lifts, XP, level, records, body weight, and goals. You can change your
+  name and preferred unit at any time (all weights switch units for display),
+  and the profile page shows your stats and full lift history (lifts can be
   deleted there).
+- **Body weight history**: save your body weight whenever you weigh in. The
+  latest weigh-in is your current weight, and past ones are listed (and can be
+  deleted).
+- **Fitness goals**: set goals for what you're going for, each with a target
+  and a progress bar showing how close you are:
+  - *Muscle growth*: a lift target, e.g. Squat 140 kg × 5
+  - *How I want to look*: a goal body weight, to lose or gain toward
+  - *Health habits*: train N days a week, or a custom habit (e.g. "Sleep 8
+    hours") that you tick off day by day
+
+  Reaching a goal gives +1 level and a celebration. There's also a one-line
+  notes field.
 - **Keeps your progress**: everything is still there after you close and reopen
   the app.
 - **Readable gothic style**: blackletter headings with an easy-to-read serif
   for everything else, at 16px or larger.
 
-See `spec.md` for the exact rules (R1–R8).
+Data from an earlier version of Grimlift (round 2) is carried over
+automatically the first time you open this version.
+
+See `spec.md` for the exact rules (R1–R11).
 
 ## Run
 
