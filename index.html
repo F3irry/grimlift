@@ -35,14 +35,14 @@
           <div class="xp-bar" role="progressbar" aria-label="XP toward next level" aria-valuemin="0" aria-valuemax="100" id="xp-bar">
             <div class="xp-fill" id="xp-fill"></div>
           </div>
-          <div class="xp-total"><span id="xp-total">0</span> XP total · record levels: <span id="pb-levels">0</span></div>
+          <div class="xp-total"><span id="xp-total">0</span> XP total · bonus levels: <span id="pb-levels">0</span></div>
         </div>
       </section>
 
       <main>
         <section id="onboard-page" class="panel page" hidden>
           <h2>Who enters the crypt?</h2>
-          <p class="lede">Make a profile so your lifts, XP, and records are yours alone. It stays on this device. No password.</p>
+          <p class="lede">Make a profile so your lifts, XP, records, and goals are yours alone. You can set goals once it exists. It stays on this device. No password.</p>
           <form id="new-profile-form" class="profile-form" autocomplete="off" novalidate>
             <label>Name <input name="name" maxlength="40" required placeholder="Your name" /></label>
             <label>Preferred unit
@@ -50,9 +50,6 @@
             </label>
             <label><span>Body weight <span class="hint">(optional)</span></span>
               <input name="bodyWeight" type="number" inputmode="decimal" min="0" step="any" />
-            </label>
-            <label class="wide"><span>Goal <span class="hint">(optional)</span></span>
-              <input name="goal" maxlength="140" placeholder="Bench 100 kg by summer" />
             </label>
             <button type="submit" class="btn btn-blood wide">Create profile</button>
           </form>
@@ -90,37 +87,103 @@
         <section id="profile-page" class="page" hidden>
           <div class="panel">
             <h2 id="profile-title">Profile</h2>
-            <p id="profile-goal" class="goal"></p>
             <dl class="stats-grid">
               <div><dt>Level</dt><dd id="st-level">1</dd></div>
               <div><dt>Total XP</dt><dd id="st-xp">0</dd></div>
               <div><dt>Lifts logged</dt><dd id="st-entries">0</dd></div>
               <div><dt>Total sets</dt><dd id="st-sets">0</dd></div>
               <div><dt>Body weight</dt><dd id="st-bw">—</dd></div>
+              <div><dt>Goals reached</dt><dd id="st-goals">0</dd></div>
             </dl>
+          </div>
+
+          <div class="panel" id="goals-panel">
+            <h2>Fitness goals</h2>
+            <p class="lede">Pick what you're going for, set a target, and watch the gap close. Each goal you reach is worth +1 level.</p>
+            <div id="goal-list" class="goal-list"></div>
+            <p id="goals-empty" class="empty">No goals yet. Add one below.</p>
+
+            <h3>Add a goal</h3>
+            <form id="goal-form" class="goal-form" autocomplete="off" novalidate>
+              <label class="wide">What are you going for?
+                <select name="type" id="goal-type">
+                  <optgroup label="Muscle growth">
+                    <option value="lift">Lift target, e.g. Squat 140 kg × 5</option>
+                  </optgroup>
+                  <optgroup label="How I want to look">
+                    <option value="bodyweight">Body-weight target</option>
+                  </optgroup>
+                  <optgroup label="Health habits">
+                    <option value="training">Train a number of days each week</option>
+                    <option value="habit">Custom habit, e.g. Sleep 8 hours</option>
+                  </optgroup>
+                </select>
+              </label>
+              <label data-for="lift" class="wide">Exercise
+                <input name="exercise" list="exercise-list" placeholder="Back Squat" />
+              </label>
+              <label data-for="lift">Target weight
+                <input name="targetWeight" type="number" inputmode="decimal" min="0" step="any" placeholder="140" />
+              </label>
+              <label data-for="lift">Unit
+                <select name="unit"><option value="kg">kg</option><option value="lb">lb</option></select>
+              </label>
+              <label data-for="lift">Target reps
+                <input name="targetReps" type="number" inputmode="numeric" min="1" step="1" placeholder="5" />
+              </label>
+              <label data-for="bodyweight"><span>Goal body weight <span class="hint" id="goal-bw-unit">(kg)</span></span>
+                <input name="targetBodyWeight" type="number" inputmode="decimal" min="0" step="any" placeholder="75" />
+              </label>
+              <label data-for="habit" class="wide">Habit
+                <input name="name" maxlength="60" placeholder="Sleep 8 hours" />
+              </label>
+              <label data-for="training habit">Days per week
+                <input name="daysPerWeek" type="number" inputmode="numeric" min="1" max="7" step="1" placeholder="3" />
+              </label>
+              <button type="submit" class="btn btn-blood wide">Add goal</button>
+            </form>
+            <p id="goal-error" class="error" role="alert"></p>
+
+            <form id="note-form" class="note-form" autocomplete="off" novalidate>
+              <label class="wide">Notes
+                <input name="goalNote" maxlength="140" placeholder="Why you train, in one line" />
+              </label>
+              <button type="submit" class="btn">Save note</button>
+            </form>
+            <p id="note-msg" class="error" role="status"></p>
           </div>
 
           <div class="columns">
             <div class="panel">
-              <h3>Records</h3>
-              <ul id="records" class="records"></ul>
-              <p id="records-empty" class="empty">Your first lift of each exercise sets its record.</p>
-            </div>
-            <div class="panel">
-              <h3>Details</h3>
-              <form id="edit-profile-form" class="profile-form" autocomplete="off" novalidate>
+              <h3>Account</h3>
+              <form id="account-form" class="profile-form" autocomplete="off" novalidate>
                 <label>Name <input name="name" maxlength="40" required /></label>
                 <label>Preferred unit
                   <select name="unit"><option value="kg">kg</option><option value="lb">lb</option></select>
                 </label>
-                <label><span>Body weight <span class="hint" id="bw-unit"></span></span>
+                <button type="submit" class="btn wide">Save account</button>
+              </form>
+              <p id="account-msg" class="error" role="status"></p>
+            </div>
+            <div class="panel">
+              <h3>Personal info</h3>
+              <p class="current-bw">Current body weight: <strong id="bw-current">not set</strong></p>
+              <form id="weigh-form" class="weigh-form" autocomplete="off" novalidate>
+                <label><span>New body weight <span class="hint" id="bw-unit">(kg)</span></span>
                   <input name="bodyWeight" type="number" inputmode="decimal" min="0" step="any" />
                 </label>
-                <label class="wide">Goal <input name="goal" maxlength="140" /></label>
-                <button type="submit" class="btn wide">Save details</button>
+                <button type="submit" class="btn">Save weight</button>
               </form>
-              <p id="edit-profile-msg" class="error" role="status"></p>
+              <p id="weigh-msg" class="error" role="status"></p>
+              <ol id="weigh-history" class="entries"></ol>
+              <p id="weigh-empty" class="empty">No weigh-ins yet.</p>
             </div>
+          </div>
+
+          <div class="panel">
+            <h3>Records</h3>
+            <ul id="records" class="records"></ul>
+            <p id="records-empty" class="empty">Your first lift of each exercise sets its record.</p>
           </div>
 
           <div class="panel">
@@ -131,7 +194,7 @@
 
           <div class="panel danger">
             <h3>Delete profile</h3>
-            <p>Removes this profile and every lift, XP point, and record in it. This cannot be undone.</p>
+            <p>Removes this profile and every lift, weigh-in, goal, XP point, and record in it. This cannot be undone.</p>
             <button id="delete-profile" type="button" class="btn btn-danger">Delete this profile</button>
           </div>
         </section>
@@ -139,6 +202,7 @@
     </div>
 
     <div id="fx-layer" class="fx-layer" aria-hidden="true"></div>
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
     <div id="ascend" class="ascend" role="status" aria-live="assertive" hidden>
       <div class="ascend-inner">
         <p class="ascend-kicker">You have ascended</p>

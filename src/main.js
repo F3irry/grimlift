@@ -1,6 +1,6 @@
 // UI wiring only. Rules live in ./logic; persistence in ./storage.js.
 import { exerciseSuggestions } from './logic/entries.js';
-import { logEntry, deleteEntry, feedbackFor, summarize } from './logic/progression.js';
+import { logEntry, deleteEntry, feedbackFor, summarize, progressChange } from './logic/progression.js';
 import {
   activeProfile,
   createProfile,
@@ -10,8 +10,10 @@ import {
   switchProfile,
   updateAccount,
 } from './logic/profiles.js';
-import { fromKg, roundTenth } from './logic/units.js';
-import { currentBodyWeightKg } from './logic/bodyweight.js';
+import { formatWeight } from './logic/units.js';
+import { addWeighIn, deleteWeighIn, weighInHistory } from './logic/bodyweight.js';
+import { addGoal, deleteGoal, goalStatus, setGoalNote, toggleHabitDay, GOAL_GROUPS } from './logic/goals.js';
+import { dayKey, weekDays, parseDayKey } from './logic/dates.js';
 import { loadApp, saveApp } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
@@ -22,6 +24,7 @@ const el = (tag, cls, text) => {
   return node;
 };
 const NEW_PROFILE = '__new__';
+const GROUP_ORDER = ['Muscle growth', 'How I want to look', 'Health habits'];
 
 let app = loadApp(window.localStorage);
 let lastProfileId = null; // to reset per-profile form defaults on switch (R1.6)
@@ -30,6 +33,18 @@ function commit(next) {
   app = next;
   saveApp(window.localStorage, app); // R4.1
   render();
+}
+
+/** Save a changed profile and play any rewards it earned (R6). */
+function commitProfile(before, after, result = progressChange(before, after)) {
+  commit(replaceProfile(app, after));
+  playFeedback(feedbackFor(result));
+}
+
+function setMsg(id, ok, text) {
+  const node = $(id);
+  node.textContent = text;
+  node.classList.toggle('ok', ok);
 }
 
 // ---------- routing ----------
@@ -46,6 +61,14 @@ function fmtWhen(iso) {
   });
 }
 
+function deleteButton(label, onClick) {
+  const x = el('button', 'btn-x', '×');
+  x.type = 'button';
+  x.setAttribute('aria-label', label);
+  x.addEventListener('click', onClick);
+  return x;
+}
+
 function entryItem(e, isPb, withDelete) {
   const li = el('li');
   const what = el('span', 'what');
@@ -53,14 +76,10 @@ function entryItem(e, isPb, withDelete) {
   if (isPb) what.append(el('span', 'tag-pb', 'PB'));
   li.append(what, el('span', 'when', fmtWhen(e.loggedAt)));
   if (withDelete) {
-    const x = el('button', 'btn-x', '×');
-    x.type = 'button';
-    x.setAttribute('aria-label', `Delete ${e.exercise} from ${fmtWhen(e.loggedAt)}`);
-    x.addEventListener('click', () => {
+    li.append(deleteButton(`Delete ${e.exercise} from ${fmtWhen(e.loggedAt)}`, () => {
       const p = activeProfile(app);
       commit(replaceProfile(app, deleteEntry(p, e.id))); // R1.4
-    });
-    li.append(x);
+    }));
   }
   return li;
 }
@@ -83,16 +102,15 @@ function renderStatus(stats) {
   $('xp-current').textContent = stats.xp.current;
   $('xp-needed').textContent = stats.xp.needed;
   $('xp-total').textContent = stats.totalXp;
-  $('pb-levels').textContent = stats.pbLevels;
+  $('pb-levels').textContent = stats.pbLevels + stats.goalLevels;
   $('xp-fill').style.width = `${(stats.xp.current / stats.xp.needed) * 100}%`;
   $('xp-bar').setAttribute('aria-valuenow', String(stats.xp.current));
 }
 
-function renderLog(profile) {
-  if (profile.id !== lastProfileId) {
-    $('unit').value = profile.unit; // R1.6
+function renderLog(profile, switched) {
+  if (switched) {
     $('log-form').reset();
-    $('unit').value = profile.unit;
+    $('unit').value = profile.unit; // R1.6
     $('log-error').textContent = '';
     $('pb-alert').hidden = true;
   }
@@ -109,15 +127,101 @@ function renderLog(profile) {
   $('recent-empty').hidden = recent.length > 0;
 }
 
-function renderProfile(profile, stats) {
+function habitDays(goal, now) {
+  const wrap = el('div', 'habit-days');
+  const today = dayKey(now);
+  const created = dayKey(new Date(goal.createdAt));
+  for (const day of weekDays(now)) {
+    const label = el('label', `habit-day${day === today ? ' today' : ''}`);
+    const box = el('input');
+    box.type = 'checkbox';
+    box.checked = goal.checks.includes(day);
+    box.disabled = day < created || day > today;
+    const name = parseDayKey(day).toLocaleDateString(undefined, { weekday: 'short' });
+    box.setAttribute('aria-label', `${goal.name}: ${parseDayKey(day).toLocaleDateString(undefined, { weekday: 'long' })}`);
+    box.addEventListener('change', () => {
+      const before = activeProfile(app);
+      const r = toggleHabitDay(before, goal.id, day, new Date());
+      if (r.ok) commitProfile(before, r.profile);
+      else render();
+    });
+    label.append(box, el('span', null, name.slice(0, 2)));
+    wrap.append(label);
+  }
+  return wrap;
+}
+
+function goalCard(goal, profile, now) {
+  const s = goalStatus(goal, profile, now);
+  const card = el('div', `goal${s.reached ? ' reached' : ''}`);
+  const head = el('div', 'goal-head');
+  const title = el('span', 'goal-title', s.title);
+  if (s.reached) title.append(el('span', 'badge', 'Reached'));
+  head.append(title, deleteButton(`Delete goal ${s.title}`, () => {
+    commit(replaceProfile(app, deleteGoal(activeProfile(app), goal.id))); // R11.7
+  }));
+  const bar = el('div', 'goal-bar');
+  bar.setAttribute('role', 'progressbar');
+  bar.setAttribute('aria-label', s.title);
+  bar.setAttribute('aria-valuemin', '0');
+  bar.setAttribute('aria-valuemax', '100');
+  bar.setAttribute('aria-valuenow', String(s.percent));
+  const fill = el('div', 'goal-fill');
+  fill.style.width = `${s.percent}%`;
+  bar.append(fill);
+  const meta = el('div', 'goal-meta');
+  meta.append(el('span', 'pct', `${s.percent}%`), el('span', null, s.remaining));
+  card.append(head, bar, meta);
+  if (goal.type === 'habit') card.append(habitDays(goal, now));
+  return card;
+}
+
+function renderGoals(profile) {
+  const now = new Date();
+  const nodes = [];
+  for (const group of GROUP_ORDER) {
+    const goals = profile.goals.filter((g) => GOAL_GROUPS[g.type] === group);
+    if (!goals.length) continue;
+    nodes.push(el('p', 'group-label', group), ...goals.map((g) => goalCard(g, profile, now)));
+  }
+  $('goal-list').replaceChildren(...nodes);
+  $('goals-empty').hidden = profile.goals.length > 0;
+  $('goal-bw-unit').textContent = `(${profile.unit})`;
+}
+
+function showGoalFields() {
+  const type = $('goal-type').value;
+  $('goal-form').querySelectorAll('[data-for]').forEach((node) => {
+    node.hidden = !node.dataset.for.split(' ').includes(type);
+  });
+}
+
+function renderProfile(profile, stats, switched) {
   $('profile-title').textContent = profile.name;
-  $('profile-goal').textContent = profile.goalNote ? `Goal: ${profile.goalNote}` : '';
   $('st-level').textContent = stats.level;
   $('st-xp').textContent = stats.totalXp;
   $('st-entries').textContent = stats.entryCount;
   $('st-sets').textContent = stats.totalSets;
-  $('st-bw').textContent =
-    stats.bodyWeight ?? '—';
+  $('st-bw').textContent = stats.bodyWeight ?? '—';
+  $('st-goals').textContent = `${stats.goalsReached} / ${stats.goalCount}`;
+
+  renderGoals(profile);
+
+  // R10: personal info
+  $('bw-current').textContent = stats.bodyWeight ?? 'not set';
+  $('bw-unit').textContent = `(${profile.unit})`;
+  const weighIns = weighInHistory(profile);
+  $('weigh-history').replaceChildren(
+    ...weighIns.map((w) => {
+      const li = el('li');
+      li.append(el('span', 'what num', formatWeight(w.kg, profile.unit)), el('span', 'when', fmtWhen(w.at)));
+      li.append(deleteButton(`Delete weigh-in from ${fmtWhen(w.at)}`, () => {
+        commit(replaceProfile(app, deleteWeighIn(activeProfile(app), w.id)));
+      }));
+      return li;
+    }),
+  );
+  $('weigh-empty').hidden = weighIns.length > 0;
 
   $('records').replaceChildren(
     ...stats.records.map((r) => {
@@ -133,15 +237,20 @@ function renderProfile(profile, stats) {
   $('history').replaceChildren(...all.map((e) => entryItem(e, pbIds.has(e.id), true)));
   $('history-empty').hidden = all.length > 0;
 
-  const form = $('edit-profile-form');
-  if (profile.id !== lastProfileId || !form.contains(document.activeElement)) {
-    form.elements.name.value = profile.name;
-    form.elements.unit.value = profile.unit;
-    const bw = currentBodyWeightKg(profile);
-    form.elements.bodyWeight.value = bw == null ? '' : roundTenth(fromKg(bw, profile.unit));
-    form.elements.goal.value = profile.goalNote;
+  // Refill editable fields only when the profile changes or they aren't being edited.
+  const account = $('account-form');
+  if (switched || !account.contains(document.activeElement)) {
+    account.elements.name.value = profile.name;
+    account.elements.unit.value = profile.unit;
   }
-  $('bw-unit').textContent = `(${form.elements.unit.value}, optional)`;
+  const note = $('note-form');
+  if (switched || !note.contains(document.activeElement)) note.elements.goalNote.value = profile.goalNote;
+  if (switched) {
+    $('goal-form').reset();
+    $('goal-form').elements.unit.value = profile.unit;
+    showGoalFields();
+    for (const id of ['goal-error', 'note-msg', 'account-msg', 'weigh-msg']) $(id).textContent = '';
+  }
 }
 
 function render() {
@@ -159,10 +268,11 @@ function render() {
   });
 
   if (profile) {
+    const switched = profile.id !== lastProfileId;
     const stats = profileStats(profile);
     renderStatus(stats);
-    renderLog(profile);
-    renderProfile(profile, stats);
+    renderLog(profile, switched);
+    renderProfile(profile, stats, switched);
   }
   lastProfileId = profile ? profile.id : null;
 }
@@ -213,6 +323,13 @@ function showPb(event) {
   pbTimer = setTimeout(() => { box.hidden = true; }, 4500);
 }
 
+function showGoalToast(event) {
+  const toast = el('div', 'toast');
+  toast.append(el('strong', null, 'Goal reached'), el('span', null, `${event.title} · +1 level`));
+  $('toasts').append(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
 let ascendTimer;
 function showLevelUp(event) {
   $('ascend-level').textContent = `Level ${event.level}`;
@@ -227,11 +344,15 @@ function hideLevelUp() {
 }
 
 function playFeedback(events) {
-  retrigger($('log-btn'), 'struck');
+  if (!events.length) return;
   retrigger($('xp-bar'), 'flash');
   for (const ev of events) {
-    if (ev.type === 'xp') popXp(ev.text, $('log-btn'));
+    if (ev.type === 'xp') {
+      retrigger($('log-btn'), 'struck');
+      popXp(ev.text, $('log-btn'));
+    }
     if (ev.type === 'pb') showPb(ev);
+    if (ev.type === 'goal') showGoalToast(ev);
     if (ev.type === 'level') setTimeout(() => showLevelUp(ev), reducedMotion() ? 0 : 450);
   }
 }
@@ -243,12 +364,11 @@ function formValues(form) {
 
 $('log-form').addEventListener('submit', (e) => {
   e.preventDefault();
-  const profile = activeProfile(app);
-  const r = logEntry(profile, formValues(e.target));
+  const before = activeProfile(app);
+  const r = logEntry(before, formValues(e.target));
   $('log-error').textContent = r.ok ? '' : r.error;
   if (!r.ok) return;
-  commit(replaceProfile(app, r.profile));
-  playFeedback(feedbackFor(r.result));
+  commitProfile(before, r.profile, r.result);
   // R7.2: keep exercise, weight, and unit so a repeat log is one click.
 });
 
@@ -262,20 +382,54 @@ $('new-profile-form').addEventListener('submit', (e) => {
   commit(r.app);
 });
 
-$('edit-profile-form').addEventListener('submit', (e) => {
+// R9: account info
+$('account-form').addEventListener('submit', (e) => {
   e.preventDefault();
-  const profile = activeProfile(app);
-  const r = updateAccount(app, profile.id, formValues(e.target));
-  const msg = $('edit-profile-msg');
-  msg.textContent = r.ok ? 'Saved.' : r.error;
-  msg.classList.toggle('ok', r.ok);
+  const r = updateAccount(app, activeProfile(app).id, formValues(e.target));
+  setMsg('account-msg', r.ok, r.ok ? 'Saved.' : r.error);
   if (!r.ok) return;
   document.activeElement?.blur();
   commit(r.app);
 });
 
-$('edit-profile-form').elements.unit.addEventListener('change', (e) => {
-  $('bw-unit').textContent = `(${e.target.value}, optional)`;
+// R10: personal info
+$('weigh-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const before = activeProfile(app);
+  const r = addWeighIn(before, e.target.elements.bodyWeight.value);
+  setMsg('weigh-msg', r.ok, r.ok ? 'Saved.' : r.error);
+  if (!r.ok) return;
+  e.target.reset();
+  commitProfile(before, r.profile);
+});
+
+// R11: goals
+$('goal-type').addEventListener('change', () => {
+  showGoalFields();
+  $('goal-error').textContent = '';
+});
+
+$('goal-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const v = formValues(e.target);
+  const input = v.type === 'bodyweight' ? { ...v, targetWeight: v.targetBodyWeight } : v;
+  const r = addGoal(activeProfile(app), input);
+  setMsg('goal-error', r.ok, r.ok ? 'Goal added.' : r.error);
+  if (!r.ok) return;
+  const type = v.type;
+  e.target.reset();
+  e.target.elements.type.value = type;
+  e.target.elements.unit.value = r.profile.unit;
+  commit(replaceProfile(app, r.profile));
+});
+
+$('note-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const r = setGoalNote(activeProfile(app), e.target.elements.goalNote.value);
+  setMsg('note-msg', r.ok, r.ok ? 'Saved.' : r.error);
+  if (!r.ok) return;
+  document.activeElement?.blur();
+  commit(replaceProfile(app, r.profile));
 });
 
 $('profile-switch').addEventListener('change', (e) => {
@@ -289,7 +443,7 @@ $('profile-switch').addEventListener('change', (e) => {
 
 $('delete-profile').addEventListener('click', () => {
   const profile = activeProfile(app);
-  const ok = window.confirm(`Delete "${profile.name}" and all of its lifts, XP, and records? This cannot be undone.`);
+  const ok = window.confirm(`Delete "${profile.name}" and all of its lifts, weigh-ins, goals, XP, and records? This cannot be undone.`);
   if (!ok) return;
   location.hash = '#/log';
   commit(deleteProfile(app, profile.id));
@@ -301,4 +455,5 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('hashchange', render);
 
+showGoalFields();
 render();

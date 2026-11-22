@@ -151,13 +151,65 @@ input:focus, select:focus { outline: 2px solid var(--blood-bright); outline-offs
 .num { color: var(--bone); font-variant-numeric: tabular-nums; }
 .tag-pb { color: var(--gold); font-weight: 700; margin-left: 0.4rem; }
 
-.goal { color: var(--ink-dim); font-style: italic; margin-top: -0.25rem; }
-.goal:empty { display: none; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; margin: 0.5rem 0 0; }
 .stats-grid div { border: 1px solid var(--panel-edge); padding: 0.5rem 0.75rem; background: var(--bg-deep); }
 .stats-grid dt { color: var(--gold); font-size: 1rem; }
 .stats-grid dd { margin: 0; font-size: 1.6rem; font-weight: 700; color: var(--bone); }
 .danger { border-color: #4a1a20; }
+
+/* R10 personal info */
+.current-bw { margin: 0 0 0.5rem; }
+.current-bw strong { color: var(--bone); }
+.weigh-form, .note-form { display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: end; }
+.note-form { margin-top: 1.25rem; }
+
+/* R11 goals */
+.goal-list { display: grid; gap: 0.9rem; margin-bottom: 1.5rem; }
+.group-label {
+  margin: 0.5rem 0 0; color: var(--gold); font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; font-size: 1rem;
+}
+.goal {
+  border: 1px solid var(--panel-edge); background: var(--bg-deep);
+  padding: 0.75rem 0.9rem; position: relative;
+}
+.goal.reached { border-color: var(--gold); box-shadow: 0 0 14px rgba(201, 162, 90, 0.2); }
+.goal-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
+.goal-title { color: var(--bone); font-weight: 700; font-size: 1.15rem; }
+.badge { color: var(--gold); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 1rem; margin-left: 0.5rem; }
+.goal-bar { height: 12px; margin: 0.5rem 0 0.3rem; border: 1px solid var(--gold-dim); background: #000; overflow: hidden; }
+.goal-fill { height: 100%; background: linear-gradient(90deg, var(--blood), var(--blood-bright)); transition: width 0.6s ease; }
+.goal.reached .goal-fill { background: linear-gradient(90deg, var(--gold-dim), var(--gold)); }
+.goal-meta { display: flex; justify-content: space-between; color: var(--ink-dim); font-size: 1rem; }
+.goal-meta .pct { color: var(--bone); font-variant-numeric: tabular-nums; }
+
+.habit-days { display: flex; gap: 0.35rem; margin-top: 0.5rem; flex-wrap: wrap; }
+.habit-day { position: relative; flex-direction: row; }
+.habit-day input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; min-height: 0; }
+.habit-day span {
+  display: grid; place-items: center; width: 2.6rem; height: 2.6rem;
+  border: 1px solid var(--panel-edge); color: var(--ink-dim); font-size: 1rem; cursor: pointer;
+}
+.habit-day input:checked + span { background: var(--blood); border-color: var(--blood-bright); color: var(--bone); }
+.habit-day input:focus-visible + span { outline: 2px solid var(--blood-bright); }
+.habit-day input:disabled + span { opacity: 0.35; cursor: not-allowed; }
+.habit-day.today span { border-color: var(--gold); }
+
+.goal-form { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; align-items: end; }
+.goal-form .wide { grid-column: 1 / -1; }
+@media (max-width: 640px) { .goal-form { grid-template-columns: 1fr 1fr; } }
+
+.toasts {
+  position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 45;
+  display: grid; gap: 0.5rem; width: min(92vw, 460px); pointer-events: none;
+}
+.toast {
+  padding: 0.8rem 1rem; text-align: center; color: var(--bone);
+  border: 2px solid var(--gold); background: rgba(10, 8, 12, 0.95);
+  box-shadow: 0 0 28px rgba(201, 162, 90, 0.45);
+  animation: pb-in 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.toast strong { display: block; font-size: 1.15rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
 
 /* R6 feedback ------------------------------------------------------------ */
 .fx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
