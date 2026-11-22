@@ -15,11 +15,22 @@ user's problem and `spec.md` for the numbered rules (R1.1, R2.1, …).
 
 ## Layout
 
-- `src/logic/` — pure game and data rules (no DOM). All logic tests target these.
+- `src/logic/` — pure rules (no DOM). All logic tests target these.
+  - `units.js` kg/lb conversion and formatting
+  - `entries.js` entry validation and exercise names
+  - `progression.js` XP, PBs, level, feedback events (derived by replaying entries)
+  - `profiles.js` creating, editing, switching, deleting profiles; stats
 - `src/storage.js` — `localStorage` load/save; takes a storage object so tests
   can pass a fake.
 - `src/main.js`, `src/style.css`, `index.html` — UI only; keep rules out of here.
-- `tests/` — Vitest files.
+- `tests/` — Vitest files. `tests/ui.test.js` checks R5/R7 by reading
+  `index.html` and `src/style.css` as text.
+
+## Data model
+
+A profile stores only its details and its `entries`. Totals (XP, PB levels,
+records) are always recomputed from entries, so deleting an entry stays
+consistent. Never store derived totals.
 
 ## Rules
 
