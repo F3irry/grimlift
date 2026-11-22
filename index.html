@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grimlift</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=UnifrakturCook:wght@700&display=swap"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="crypt">
+      <header class="sigil">
+        <h1>Grimlift</h1>
+        <p class="motto">Every rep an offering. Every record a rite.</p>
+        <div class="stats">
+          <div class="level" aria-label="Level">
+            <span class="level-label">Level</span>
+            <span id="level" class="level-num">1</span>
+          </div>
+          <div class="xp">
+            <div class="xp-text"><span id="xp-current">0</span> / <span id="xp-needed">100</span> XP to next level</div>
+            <div class="xp-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="xp-bar">
+              <div class="xp-fill" id="xp-fill"></div>
+            </div>
+            <div class="xp-total">Total <span id="xp-total">0</span> XP · <span id="pb-levels">0</span> levels from records</div>
+          </div>
+        </div>
+      </header>
+
+      <div id="omen" class="omen" role="status" aria-live="polite" hidden></div>
+
+      <section class="panel">
+        <h2>Tonight's Rite</h2>
+        <form id="set-form" class="set-form" autocomplete="off" novalidate>
+          <label>
+            Exercise
+            <input id="exercise" name="exercise" list="exercise-list" placeholder="Back Squat" required />
+            <datalist id="exercise-list"></datalist>
+          </label>
+          <label>
+            Weight
+            <input id="weight" name="weight" type="number" inputmode="decimal" min="0" step="any" placeholder="135" required />
+          </label>
+          <label>
+            Reps
+            <input id="reps" name="reps" type="number" inputmode="numeric" min="1" step="1" placeholder="5" required />
+          </label>
+          <button type="submit" class="btn">Add set</button>
+        </form>
+        <p id="form-error" class="error" role="alert"></p>
+
+        <ol id="draft-sets" class="sets"></ol>
+        <p id="draft-empty" class="empty">No sets yet. Log one above, then seal the rite.</p>
+        <button id="complete" class="btn btn-blood" type="button">Complete workout</button>
+      </section>
+
+      <div class="columns">
+        <section class="panel">
+          <h2>Records</h2>
+          <ul id="bests" class="records"></ul>
+          <p id="bests-empty" class="empty">Your first set of each exercise sets its record.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Chronicle</h2>
+          <ul id="history" class="history"></ul>
+          <p id="history-empty" class="empty">No completed workouts yet.</p>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
