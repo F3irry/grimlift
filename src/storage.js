@@ -1,47 +1,63 @@
 // Browser persistence (spec R4). Takes a Storage-like object so tests can fake it.
-import { createInitialState } from './logic/progression.js';
+import { createApp } from './logic/profiles.js';
+import { UNITS } from './logic/units.js';
 
-export const STORAGE_KEY = 'grimlift:v1';
+export const STORAGE_KEY = 'grimlift:v2';
+/** R4.4: round-1 key. It is never read. */
+export const LEGACY_KEY = 'grimlift:v1';
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
-const isCount = (v) => Number.isInteger(v) && v >= 0;
-const isSet = (s) =>
-  isObj(s) && typeof s.exercise === 'string' && Number.isFinite(s.weight) && isCount(s.reps);
+const isStr = (v) => typeof v === 'string';
+const isPosInt = (v) => Number.isInteger(v) && v >= 1;
 
-/** R4.3: accept only data shaped like a game state. */
-export function isValidState(s) {
+const isEntry = (e) =>
+  isObj(e) &&
+  isStr(e.id) &&
+  isStr(e.loggedAt) &&
+  isStr(e.exercise) &&
+  isPosInt(e.sets) &&
+  isPosInt(e.reps) &&
+  Number.isFinite(e.weight) &&
+  e.weight >= 0 &&
+  UNITS.includes(e.unit);
+
+const isProfile = (p) =>
+  isObj(p) &&
+  isStr(p.id) &&
+  isStr(p.name) &&
+  UNITS.includes(p.unit) &&
+  (p.bodyWeightKg === null || (Number.isFinite(p.bodyWeightKg) && p.bodyWeightKg > 0)) &&
+  isStr(p.goal) &&
+  Array.isArray(p.entries) &&
+  p.entries.every(isEntry);
+
+/** R4.3: accept only data shaped like a v2 app. */
+export function isValidApp(a) {
   return (
-    isObj(s) &&
-    Array.isArray(s.workouts) &&
-    s.workouts.every((w) => isObj(w) && Array.isArray(w.sets) && w.sets.every(isSet)) &&
-    isCount(s.totalXp) &&
-    isCount(s.pbLevels) &&
-    isObj(s.bests) &&
-    Object.values(s.bests).every(
-      (b) => isObj(b) && typeof b.name === 'string' && Number.isFinite(b.weight) && isCount(b.reps),
-    ) &&
-    isObj(s.draft) &&
-    Array.isArray(s.draft.sets) &&
-    s.draft.sets.every(isSet)
+    isObj(a) &&
+    a.version === 2 &&
+    Array.isArray(a.profiles) &&
+    a.profiles.every(isProfile) &&
+    (a.activeProfileId === null || a.profiles.some((p) => p.id === a.activeProfileId))
   );
 }
 
 /** R4.2, R4.3 */
-export function loadState(storage) {
+export function loadApp(storage) {
   try {
     const raw = storage.getItem(STORAGE_KEY);
-    if (raw == null) return createInitialState();
+    if (raw == null) return createApp();
     const parsed = JSON.parse(raw);
-    return isValidState(parsed) ? parsed : createInitialState();
+    return isValidApp(parsed) ? parsed : createApp();
   } catch {
-    return createInitialState();
+    return createApp();
   }
 }
 
 /** R4.1: returns true if the write succeeded. */
-export function saveState(storage, state) {
+export function saveApp(storage, app) {
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(state));
+    storage.setItem(STORAGE_KEY, JSON.stringify(app));
     return true;
   } catch {
     return false;

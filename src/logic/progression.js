@@ -1,18 +1,16 @@
-// XP, levels, and personal bests (spec R2, R3).
-import { normalizeName } from './workout.js';
+// XP, personal bests, level, and feedback (spec R2, R3, R6).
+// Totals are always derived by replaying a profile's entries in order.
+import { normalizeName, validateEntry } from './entries.js';
+import { toKg } from './units.js';
 
 export const BASE_XP = 20;
 export const XP_PER_SET = 5;
 export const XP_PER_LEVEL = 100;
-
-/** The empty game state. `bests` maps normalized exercise name → { name, weight, reps }. */
-export function createInitialState() {
-  return { workouts: [], totalXp: 0, pbLevels: 0, bests: {}, draft: { sets: [] } };
-}
+const SAME_WEIGHT_KG = 0.01;
 
 /** R2.1 */
-export function xpForWorkout(setCount) {
-  return BASE_XP + XP_PER_SET * setCount;
+export function xpForEntry(sets) {
+  return BASE_XP + XP_PER_SET * sets;
 }
 
 /** R2.2 */
@@ -25,69 +23,104 @@ export function xpProgress(totalXp) {
   return { current: totalXp % XP_PER_LEVEL, needed: XP_PER_LEVEL };
 }
 
-/** R3.5 */
-export function levelOf(state) {
-  return 1 + xpLevels(state.totalXp) + state.pbLevels;
+/** R3.4 */
+export function levelFor(totalXp, pbLevels) {
+  return 1 + xpLevels(totalXp) + pbLevels;
 }
 
-/** R3.1: heavier wins; at equal weight, more reps wins. */
-export function isBetterSet(candidate, best) {
-  if (candidate.weight !== best.weight) return candidate.weight > best.weight;
+/** R3.1: heavier (in kg) wins; within 0.01 kg, more reps wins. */
+export function isBetter(candidate, best) {
+  const diff = toKg(candidate.weight, candidate.unit) - toKg(best.weight, best.unit);
+  if (Math.abs(diff) >= SAME_WEIGHT_KG) return diff > 0;
   return candidate.reps > best.reps;
 }
 
 /**
- * R2.1, R3.2–R3.4: finish the draft workout.
- * Returns { ok: false, state, error } for an empty draft (R1.5), otherwise
- * { ok: true, state, result } where result describes what was earned.
+ * Replay entries to get totals. `bests` maps normalized name →
+ * { name, weight, reps, unit, kg }, where name is the first typed name (R1.3).
  */
-export function completeWorkout(state, now = new Date()) {
-  const sets = state.draft.sets;
-  if (sets.length === 0) {
-    return { ok: false, state, error: 'Add at least one set first.' };
-  }
+export function summarize(entries) {
+  let totalXp = 0;
+  let pbLevels = 0;
+  const bests = {};
+  const pbIds = new Set();
 
-  const bests = { ...state.bests };
-  const pbByKey = new Map(); // keeps first-PB order; value is the latest PB set
-
-  for (const s of sets) {
-    const key = normalizeName(s.exercise);
+  for (const e of entries) {
+    totalXp += xpForEntry(e.sets);
+    const key = normalizeName(e.exercise);
     const prev = bests[key];
-    if (!prev) {
-      bests[key] = { name: s.exercise, weight: s.weight, reps: s.reps }; // R3.2 baseline
-    } else if (isBetterSet(s, prev)) {
-      bests[key] = { name: prev.name, weight: s.weight, reps: s.reps };
-      pbByKey.set(key, bests[key]);
+    if (!prev || isBetter(e, prev)) {
+      if (prev) {
+        pbLevels += 1; // R3.3
+        pbIds.add(e.id);
+      }
+      bests[key] = {
+        name: prev ? prev.name : e.exercise, // R3.2: first entry is only a baseline
+        weight: e.weight,
+        reps: e.reps,
+        unit: e.unit,
+        kg: toKg(e.weight, e.unit),
+      };
     }
   }
 
-  const xpEarned = xpForWorkout(sets.length);
-  const pbLevelsEarned = pbByKey.size; // R3.4: one level per exercise
-  const workout = {
-    id: `${now.getTime()}-${state.workouts.length}`,
-    completedAt: now.toISOString(),
-    sets,
-    xp: xpEarned,
-  };
+  return { totalXp, pbLevels, level: levelFor(totalXp, pbLevels), bests, pbIds };
+}
 
-  const next = {
-    ...state,
-    workouts: [...state.workouts, workout],
-    totalXp: state.totalXp + xpEarned,
-    pbLevels: state.pbLevels + pbLevelsEarned,
-    bests,
-    draft: { sets: [] },
-  };
+function newId(now) {
+  return `e${now.getTime().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * R1, R2.1, R3: validate and log an entry into `profile`.
+ * Returns { ok: false, profile, error } or { ok: true, profile, result }.
+ */
+export function logEntry(profile, input, now = new Date()) {
+  const v = validateEntry(input);
+  if (!v.ok) return { ok: false, profile, error: v.error };
+
+  const entry = { id: newId(now), loggedAt: now.toISOString(), ...v.entry };
+  const before = summarize(profile.entries);
+  const next = { ...profile, entries: [...profile.entries, entry] };
+  const after = summarize(next.entries);
+  const best = after.bests[normalizeName(entry.exercise)];
 
   return {
     ok: true,
-    state: next,
+    profile: next,
     result: {
-      xpEarned,
-      pbLevelsEarned,
-      personalBests: [...pbByKey.values()].map((b) => ({ ...b })),
-      levelBefore: levelOf(state),
-      levelAfter: levelOf(next),
+      entry,
+      exerciseName: best.name,
+      xpEarned: xpForEntry(entry.sets),
+      personalBest: after.pbIds.has(entry.id),
+      levelBefore: before.level,
+      levelAfter: after.level,
+      totalXp: after.totalXp,
     },
   };
+}
+
+/** R1.4: remove an entry; totals follow automatically because they are derived. */
+export function deleteEntry(profile, entryId) {
+  return { ...profile, entries: profile.entries.filter((e) => e.id !== entryId) };
+}
+
+/** R6.1: feedback events for one logged entry, in display order. */
+export function feedbackFor(result) {
+  const events = [{ type: 'xp', amount: result.xpEarned, text: `+${result.xpEarned} XP` }];
+  if (result.personalBest) {
+    const { weight, reps, unit } = result.entry;
+    events.push({
+      type: 'pb',
+      exercise: result.exerciseName,
+      weight,
+      reps,
+      unit,
+      text: `New personal best: ${result.exerciseName} ${weight} ${unit} × ${reps}`,
+    });
+  }
+  if (result.levelAfter > result.levelBefore) {
+    events.push({ type: 'level', level: result.levelAfter, text: `Level ${result.levelAfter}` });
+  }
+  return events;
 }
