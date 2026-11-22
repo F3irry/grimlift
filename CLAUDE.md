@@ -20,7 +20,10 @@ user's problem and `spec.md` for the numbered rules (R1.1, R2.1, …).
   - `units.js` kg/lb conversion and formatting
   - `entries.js` entry validation and exercise names
   - `progression.js` XP, PBs, level, feedback events (derived by replaying entries)
-  - `profiles.js` creating, editing, switching, deleting profiles; stats
+  - `bodyweight.js` weigh-ins (R10)
+  - `goals.js` goal validation, progress, and reached status (R11)
+  - `dates.js` local day/week keys (weeks start Monday)
+  - `profiles.js` creating, editing, switching, deleting profiles; level; stats
 - `src/storage.js` — `localStorage` load/save; takes a storage object so tests
   can pass a fake.
 - `src/main.js`, `src/style.css`, `index.html` — UI only; keep rules out of here.
@@ -29,12 +32,19 @@ user's problem and `spec.md` for the numbered rules (R1.1, R2.1, …).
 
 ## Data model
 
-A profile stores only its details and its `entries`. Totals (XP, PB levels,
-records) are always recomputed from entries, so deleting an entry stays
-consistent. Never store derived totals.
+A profile stores only its details and raw records: `entries`, `weighIns`,
+`goals` (with habit `checks`), and `goalNote`. Totals (XP, PB levels, goal
+levels, records, goal progress) are always recomputed from those, so deleting
+anything stays consistent. Never store derived totals. The only stored values
+captured at a point in time are a goal's `baselineKg` (lift) and `startKg`
+(body weight), because they mean "where you were when you set the goal".
 
-Saved data lives under the `localStorage` key `grimlift:v2`. If the saved shape
-changes, use a new key (`grimlift:v3`) and ask the user whether to migrate the
+Logic that depends on the date takes `now` as a parameter. Tests build dates
+with the local `new Date(y, m, d, h)` constructor so they pass in any timezone.
+
+Saved data lives under the `localStorage` key `grimlift:v3` (v2 is migrated on
+load; v1 is ignored). If the saved shape
+changes, use a new key (`grimlift:v4`) and ask the user whether to migrate the
 old data or start fresh. Don't decide that yourself.
 
 ## Rules
