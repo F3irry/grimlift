@@ -2,6 +2,7 @@
 // Totals are always derived by replaying a profile's entries in order.
 import { normalizeName, validateEntry } from './entries.js';
 import { toKg } from './units.js';
+import { goalLevels, reachedGoalIds, goalStatus } from './goals.js';
 
 export const BASE_XP = 20;
 export const XP_PER_SET = 5;
@@ -23,9 +24,37 @@ export function xpProgress(totalXp) {
   return { current: totalXp % XP_PER_LEVEL, needed: XP_PER_LEVEL };
 }
 
-/** R3.4 */
-export function levelFor(totalXp, pbLevels) {
-  return 1 + xpLevels(totalXp) + pbLevels;
+/** R3.4: level from XP, PB levels, and goal levels (R11.8). */
+export function levelFor(totalXp, pbLevels, goalLvls = 0) {
+  return 1 + xpLevels(totalXp) + pbLevels + goalLvls;
+}
+
+/** R3.4: everything that makes up a profile's level. */
+export function profileLevel(profile) {
+  const { totalXp, pbLevels } = summarize(profile.entries);
+  const gl = goalLevels(profile);
+  return { totalXp, pbLevels, goalLevels: gl, level: levelFor(totalXp, pbLevels, gl) };
+}
+
+/**
+ * R6.1: what changed between two versions of a profile: goals newly reached
+ * and the level before and after. Used for weigh-ins and habit ticks too.
+ */
+export function progressChange(before, after, now = new Date()) {
+  const had = new Set(reachedGoalIds(before));
+  const goalsReached = reachedGoalIds(after)
+    .filter((id) => !had.has(id))
+    .map((id) => {
+      const s = goalStatus(after.goals.find((g) => g.id === id), after, now);
+      return { id, title: s.title };
+    });
+  return {
+    xpEarned: 0,
+    personalBest: false,
+    goalsReached,
+    levelBefore: profileLevel(before).level,
+    levelAfter: profileLevel(after).level,
+  };
 }
 
 /** R3.1: heavier (in kg) wins; within 0.01 kg, more reps wins. */
@@ -80,7 +109,6 @@ export function logEntry(profile, input, now = new Date()) {
   if (!v.ok) return { ok: false, profile, error: v.error };
 
   const entry = { id: newId(now), loggedAt: now.toISOString(), ...v.entry };
-  const before = summarize(profile.entries);
   const next = { ...profile, entries: [...profile.entries, entry] };
   const after = summarize(next.entries);
   const best = after.bests[normalizeName(entry.exercise)];
@@ -89,12 +117,11 @@ export function logEntry(profile, input, now = new Date()) {
     ok: true,
     profile: next,
     result: {
+      ...progressChange(profile, next, now),
       entry,
       exerciseName: best.name,
       xpEarned: xpForEntry(entry.sets),
       personalBest: after.pbIds.has(entry.id),
-      levelBefore: before.level,
-      levelAfter: after.level,
       totalXp: after.totalXp,
     },
   };
@@ -105,9 +132,12 @@ export function deleteEntry(profile, entryId) {
   return { ...profile, entries: profile.entries.filter((e) => e.id !== entryId) };
 }
 
-/** R6.1: feedback events for one logged entry, in display order. */
+/** R6.1: feedback events for one change, in display order. */
 export function feedbackFor(result) {
-  const events = [{ type: 'xp', amount: result.xpEarned, text: `+${result.xpEarned} XP` }];
+  const events = [];
+  if (result.xpEarned > 0) {
+    events.push({ type: 'xp', amount: result.xpEarned, text: `+${result.xpEarned} XP` });
+  }
   if (result.personalBest) {
     const { weight, reps, unit } = result.entry;
     events.push({
@@ -118,6 +148,9 @@ export function feedbackFor(result) {
       unit,
       text: `New personal best: ${result.exerciseName} ${weight} ${unit} × ${reps}`,
     });
+  }
+  for (const g of result.goalsReached ?? []) {
+    events.push({ type: 'goal', id: g.id, title: g.title, text: `Goal reached: ${g.title}` });
   }
   if (result.levelAfter > result.levelBefore) {
     events.push({ type: 'level', level: result.levelAfter, text: `Level ${result.levelAfter}` });

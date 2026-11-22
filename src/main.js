@@ -8,9 +8,10 @@ import {
   profileStats,
   replaceProfile,
   switchProfile,
-  updateProfile,
+  updateAccount,
 } from './logic/profiles.js';
 import { fromKg, roundTenth } from './logic/units.js';
+import { currentBodyWeightKg } from './logic/bodyweight.js';
 import { loadApp, saveApp } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
@@ -110,13 +111,13 @@ function renderLog(profile) {
 
 function renderProfile(profile, stats) {
   $('profile-title').textContent = profile.name;
-  $('profile-goal').textContent = profile.goal ? `Goal: ${profile.goal}` : '';
+  $('profile-goal').textContent = profile.goalNote ? `Goal: ${profile.goalNote}` : '';
   $('st-level').textContent = stats.level;
   $('st-xp').textContent = stats.totalXp;
   $('st-entries').textContent = stats.entryCount;
   $('st-sets').textContent = stats.totalSets;
   $('st-bw').textContent =
-    profile.bodyWeightKg == null ? '—' : `${roundTenth(fromKg(profile.bodyWeightKg, profile.unit))} ${profile.unit}`;
+    stats.bodyWeight ?? '—';
 
   $('records').replaceChildren(
     ...stats.records.map((r) => {
@@ -136,9 +137,9 @@ function renderProfile(profile, stats) {
   if (profile.id !== lastProfileId || !form.contains(document.activeElement)) {
     form.elements.name.value = profile.name;
     form.elements.unit.value = profile.unit;
-    form.elements.bodyWeight.value =
-      profile.bodyWeightKg == null ? '' : roundTenth(fromKg(profile.bodyWeightKg, profile.unit));
-    form.elements.goal.value = profile.goal;
+    const bw = currentBodyWeightKg(profile);
+    form.elements.bodyWeight.value = bw == null ? '' : roundTenth(fromKg(bw, profile.unit));
+    form.elements.goal.value = profile.goalNote;
   }
   $('bw-unit').textContent = `(${form.elements.unit.value}, optional)`;
 }
@@ -264,7 +265,7 @@ $('new-profile-form').addEventListener('submit', (e) => {
 $('edit-profile-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const profile = activeProfile(app);
-  const r = updateProfile(app, profile.id, formValues(e.target));
+  const r = updateAccount(app, profile.id, formValues(e.target));
   const msg = $('edit-profile-msg');
   msg.textContent = r.ok ? 'Saved.' : r.error;
   msg.classList.toggle('ok', r.ok);
