@@ -2,16 +2,20 @@ import { describe, it, expect } from 'vitest';
 import {
   createApp,
   createProfile,
-  updateProfile,
+  updateAccount,
   switchProfile,
   deleteProfile,
   activeProfile,
   replaceProfile,
   profileStats,
+  profileLevel,
 } from '../src/logic/profiles.js';
 import { logEntry } from '../src/logic/progression.js';
+import { addWeighIn } from '../src/logic/bodyweight.js';
+import { addGoal } from '../src/logic/goals.js';
+import { at } from './helpers.js';
 
-const NOW = new Date('2026-11-22T10:00:00Z');
+const NOW = at(23, 8);
 
 function withProfiles(...names) {
   let app = createApp();
@@ -23,8 +27,8 @@ function withProfiles(...names) {
   return app;
 }
 
-function log(app, input) {
-  const r = logEntry(activeProfile(app), { sets: 1, reps: 5, unit: 'kg', ...input }, NOW);
+function log(app, input, now = at(23, 10)) {
+  const r = logEntry(activeProfile(app), { sets: 1, reps: 5, unit: 'kg', ...input }, now);
   expect(r.ok).toBe(true);
   return replaceProfile(app, r.profile);
 }
@@ -37,21 +41,15 @@ describe('R8 profiles', () => {
   });
 
   it('R8.1: creating a profile makes it active', () => {
-    const app = withProfiles('Ash');
-    expect(activeProfile(app).name).toBe('Ash');
+    expect(activeProfile(withProfiles('Ash')).name).toBe('Ash');
   });
 
-  it('R8.2: defaults are kg, no body weight, empty goal, no entries', () => {
+  it('R8.2: a new profile has kg, no weigh-ins, no goals, an empty note, no entries', () => {
     const p = activeProfile(withProfiles('Ash'));
-    expect(p).toMatchObject({ name: 'Ash', unit: 'kg', bodyWeightKg: null, goal: '', entries: [] });
-    expect(typeof p.id).toBe('string');
-  });
-
-  it('R8.2: stores body weight in kg from the preferred unit', () => {
-    const r = createProfile(createApp(), { name: 'Ash', unit: 'lb', bodyWeight: '200', goal: '  Bench 225  ' }, NOW);
-    expect(r.profile.unit).toBe('lb');
-    expect(r.profile.bodyWeightKg).toBeCloseTo(90.718474, 6);
-    expect(r.profile.goal).toBe('Bench 225');
+    expect(p).toEqual({
+      id: expect.any(String), createdAt: NOW.toISOString(), name: 'Ash', unit: 'kg',
+      entries: [], weighIns: [], goals: [], goalNote: '',
+    });
   });
 
   it('R8.2: rejects a blank, too long, or duplicate name', () => {
@@ -65,14 +63,12 @@ describe('R8 profiles', () => {
     expect(createProfile(app, { name: 'x'.repeat(40) }, NOW).ok).toBe(true);
   });
 
-  it('R8.2: rejects a bad unit, body weight, or overlong goal', () => {
+  it('R8.2: rejects a bad unit or starting body weight', () => {
     const app = createApp();
     expect(createProfile(app, { name: 'A', unit: 'stone' }, NOW).error).toMatch(/unit/i);
     for (const bodyWeight of ['0', '-70', 'big']) {
       expect(createProfile(app, { name: 'A', bodyWeight }, NOW).error).toMatch(/body weight/i);
     }
-    expect(createProfile(app, { name: 'A', goal: 'g'.repeat(141) }, NOW).error).toMatch(/goal/i);
-    expect(createProfile(app, { name: 'A', bodyWeight: '' }, NOW).profile.bodyWeightKg).toBeNull();
   });
 
   it('R8.3: switching changes the active profile', () => {
@@ -101,29 +97,20 @@ describe('R8 profiles', () => {
     expect(b.records[0].display).toBe('60 kg × 5');
   });
 
-  it('R8.4: editing keeps entries and validates like creation', () => {
-    let app = withProfiles('Ash', 'Bryn');
-    app = log(app, { exercise: 'Row', weight: 50 });
-    const id = activeProfile(app).id;
-    const r = updateProfile(app, id, { name: 'Bryn R', unit: 'lb', bodyWeight: '150', goal: 'Row 200' });
-    expect(r.ok).toBe(true);
-    expect(activeProfile(r.app)).toMatchObject({ name: 'Bryn R', unit: 'lb', goal: 'Row 200' });
-    expect(activeProfile(r.app).entries).toHaveLength(1);
-    // Keeping your own name is fine; taking another profile's is not.
-    expect(updateProfile(r.app, id, { name: 'bryn r' }).ok).toBe(true);
-    expect(updateProfile(r.app, id, { name: 'ASH' }).error).toMatch(/name/i);
-  });
-
-  it('R8.4 / R3.5: stats summary shows level, XP, counts, and records in the preferred unit', () => {
+  it('R8.4 / R3.5: stats show level, XP, counts, body weight, goals reached, and records', () => {
     let app = withProfiles('Ash');
+    let p = addWeighIn(activeProfile(app), '90', at(23, 9)).profile;
+    p = addGoal(p, { type: 'training', daysPerWeek: 1 }, at(23, 9)).profile;
+    app = replaceProfile(app, p);
     app = log(app, { exercise: 'Squat', sets: 3, weight: 100 });
     app = log(app, { exercise: 'Bench', sets: 2, weight: 135, unit: 'lb' });
-    app = updateProfile(app, activeProfile(app).id, { name: 'Ash', unit: 'lb' }).app;
+    app = updateAccount(app, activeProfile(app).id, { name: 'Ash', unit: 'lb' }).app;
     const s = profileStats(activeProfile(app));
-    expect(s).toMatchObject({ level: 1, totalXp: 65, entryCount: 2, totalSets: 5 });
+    expect(s).toMatchObject({ level: 2, totalXp: 65, entryCount: 2, totalSets: 5, goalsReached: 1, goalCount: 1 });
+    expect(s.bodyWeight).toBe('198.4 lb');
     expect(s.xp).toEqual({ current: 65, needed: 100 });
     expect(s.records.map((r) => r.display)).toEqual(['135 lb × 5', '220.5 lb × 5']);
-    expect(s.records.map((r) => r.name)).toEqual(['Bench', 'Squat']);
+    expect(profileStats(activeProfile(withProfiles('New'))).bodyWeight).toBeNull();
   });
 
   it('R8.5: deleting the active profile switches to another', () => {
@@ -144,5 +131,52 @@ describe('R8 profiles', () => {
     let app = withProfiles('Ash', 'Bryn');
     app = deleteProfile(app, app.profiles[0].id);
     expect(activeProfile(app).name).toBe('Bryn');
+  });
+});
+
+describe('R9 account info', () => {
+  it('R9.1: name and unit can be changed without touching entries, weigh-ins, or goals', () => {
+    let app = withProfiles('Ash', 'Bryn');
+    let p = addWeighIn(activeProfile(app), '80', at(23, 9)).profile;
+    p = addGoal(p, { type: 'training', daysPerWeek: 2 }, at(23, 9)).profile;
+    app = log(replaceProfile(app, p), { exercise: 'Row', weight: 50 });
+    const before = activeProfile(app);
+    const r = updateAccount(app, before.id, { name: 'Bryn R', unit: 'lb' });
+    expect(r.ok).toBe(true);
+    expect(activeProfile(r.app)).toEqual({ ...before, name: 'Bryn R', unit: 'lb' });
+  });
+
+  it('R9.1: uses the same rules as creation; keeping your own name is fine', () => {
+    const app = withProfiles('Ash', 'Bryn');
+    const id = activeProfile(app).id;
+    expect(updateAccount(app, id, { name: 'bryn', unit: 'kg' }).ok).toBe(true);
+    expect(updateAccount(app, id, { name: 'ASH', unit: 'kg' }).error).toMatch(/name/i);
+    expect(updateAccount(app, id, { name: '', unit: 'kg' }).error).toMatch(/name/i);
+    expect(updateAccount(app, id, { name: 'Bryn', unit: 'st' }).error).toMatch(/unit/i);
+    expect(updateAccount(app, 'missing', { name: 'X', unit: 'kg' }).ok).toBe(false);
+  });
+
+  it('R9.2: changing the unit only changes how weights are shown', () => {
+    let app = withProfiles('Ash');
+    let p = addWeighIn(activeProfile(app), '100', at(23, 9)).profile;
+    app = log(replaceProfile(app, p), { exercise: 'Squat', weight: 100 });
+    const kgView = profileStats(activeProfile(app));
+    app = updateAccount(app, activeProfile(app).id, { name: 'Ash', unit: 'lb' }).app;
+    const lbView = profileStats(activeProfile(app));
+    expect(kgView.bodyWeight).toBe('100 kg');
+    expect(lbView.bodyWeight).toBe('220.5 lb');
+    expect(lbView.records[0].display).toBe('220.5 lb × 5');
+    expect(activeProfile(app).weighIns[0].kg).toBe(100);
+  });
+});
+
+describe('R3.4 level formula', () => {
+  it('R3.4: level = 1 + XP levels + PB levels + goal levels', () => {
+    let app = withProfiles('Ash');
+    let p = addGoal(activeProfile(app), { type: 'training', daysPerWeek: 1 }, at(23, 9)).profile;
+    app = replaceProfile(app, p);
+    app = log(app, { exercise: 'Squat', weight: 100 });
+    app = log(app, { exercise: 'Squat', weight: 110 });
+    expect(profileLevel(activeProfile(app))).toEqual({ totalXp: 50, pbLevels: 1, goalLevels: 1, level: 3 });
   });
 });

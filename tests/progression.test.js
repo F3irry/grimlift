@@ -9,10 +9,16 @@ import {
   logEntry,
   deleteEntry,
   feedbackFor,
+  progressChange,
 } from '../src/logic/progression.js';
+import { addGoal, toggleHabitDay } from '../src/logic/goals.js';
+import { addWeighIn } from '../src/logic/bodyweight.js';
+import { at, newProfile, lift } from './helpers.js';
 
 const NOW = new Date('2026-11-22T10:00:00Z');
-const blankProfile = () => ({ id: 'p1', name: 'Ash', unit: 'kg', bodyWeightKg: null, goal: '', entries: [] });
+const blankProfile = () => ({
+  id: 'p1', name: 'Ash', unit: 'kg', entries: [], weighIns: [], goals: [], goalNote: '',
+});
 
 /** Log entries given as [exercise, sets, reps, weight, unit?]; returns final profile and last result. */
 function play(...rows) {
@@ -158,5 +164,36 @@ describe('R6 instant feedback', () => {
   it('R6.1: crossing 100 XP without a PB gives XP then level-up', () => {
     const { result } = play(['A', 1, 1, 1], ['B', 1, 1, 1], ['C', 1, 1, 1], ['D', 1, 1, 1]);
     expect(feedbackFor(result).map((e) => e.type)).toEqual(['xp', 'level']);
+  });
+
+  it('R6.1 / R3.4: a lift that reaches a goal gives XP, PB, goal, then one level-up event', () => {
+    let p = lift(newProfile(), ['Squat', 1, 5, 100], at(23, 8)).profile;
+    p = addGoal(p, { type: 'lift', exercise: 'Squat', targetWeight: '105', unit: 'kg', targetReps: '5' }, at(23, 9)).profile;
+    const { result } = lift(p, ['Squat', 1, 5, 105], at(24));
+    const events = feedbackFor(result);
+    expect(events.map((e) => e.type)).toEqual(['xp', 'pb', 'goal', 'level']);
+    expect(events[2]).toMatchObject({ title: 'Squat 105 kg × 5', text: 'Goal reached: Squat 105 kg × 5' });
+    expect(events[3]).toMatchObject({ level: 3 }); // 50 XP + 1 PB level + 1 goal level
+  });
+
+  it('R6.1: a weigh-in that reaches a goal gives goal and level-up events, no XP', () => {
+    let p = addWeighIn(newProfile(), '90', at(23, 8)).profile;
+    p = addGoal(p, { type: 'bodyweight', targetWeight: '89' }, at(23, 9)).profile;
+    const after = addWeighIn(p, '88.9', at(25)).profile;
+    const events = feedbackFor(progressChange(p, after));
+    expect(events.map((e) => e.type)).toEqual(['goal', 'level']);
+    expect(events[1]).toMatchObject({ level: 2 });
+  });
+
+  it('R6.1: a habit tick that reaches a goal gives goal and level-up events', () => {
+    let p = addGoal(newProfile(), { type: 'habit', name: 'Stretch', daysPerWeek: 1 }, at(23, 9)).profile;
+    const after = toggleHabitDay(p, p.goals[0].id, '2026-11-23', at(23, 20)).profile;
+    expect(feedbackFor(progressChange(p, after)).map((e) => e.type)).toEqual(['goal', 'level']);
+  });
+
+  it('R6.1: a change that reaches nothing gives no events', () => {
+    const p = newProfile();
+    const after = addWeighIn(p, '80', at(23)).profile;
+    expect(feedbackFor(progressChange(p, after))).toEqual([]);
   });
 });
