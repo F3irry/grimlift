@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { STORAGE_KEY, loadState, saveState } from '../src/storage.js';
-import { addSet } from '../src/logic/workout.js';
-import { createInitialState, completeWorkout, levelOf } from '../src/logic/progression.js';
+import { STORAGE_KEY, LEGACY_KEY, loadApp, saveApp } from '../src/storage.js';
+import { createApp, createProfile, activeProfile, replaceProfile, profileStats } from '../src/logic/profiles.js';
+import { logEntry } from '../src/logic/progression.js';
 
 /** Minimal stand-in for window.localStorage. */
 function fakeStorage(initial = {}) {
@@ -9,52 +9,54 @@ function fakeStorage(initial = {}) {
   return {
     getItem: (k) => (data.has(k) ? data.get(k) : null),
     setItem: (k, v) => data.set(k, String(v)),
-    removeItem: (k) => data.delete(k),
     raw: data,
   };
 }
 
-function sampleState() {
-  let s = createInitialState();
-  s = addSet(s, { exercise: 'Squat', weight: 100, reps: 5 }).state;
-  s = completeWorkout(s, new Date('2026-11-20T09:00:00Z')).state;
-  s = addSet(s, { exercise: 'Squat', weight: 110, reps: 5 }).state;
-  s = completeWorkout(s, new Date('2026-11-21T09:00:00Z')).state;
-  s = addSet(s, { exercise: 'Row', weight: 60, reps: 10 }).state; // unfinished draft
-  return s;
+function sampleApp() {
+  const now = new Date('2026-11-21T09:00:00Z');
+  let app = createProfile(createApp(), { name: 'Ash', unit: 'lb', bodyWeight: '180', goal: 'Squat 315' }, now).app;
+  app = createProfile(app, { name: 'Bryn' }, now).app;
+  app = { ...app, activeProfileId: app.profiles[0].id };
+  for (const weight of [225, 245]) {
+    const r = logEntry(activeProfile(app), { exercise: 'Squat', sets: 3, reps: 5, weight, unit: 'lb' }, now);
+    app = replaceProfile(app, r.profile);
+  }
+  return app;
 }
 
 describe('R4 persistence', () => {
-  it('R4.1: saving writes JSON under the storage key', () => {
+  it('R4.1: saving writes JSON under the v2 key', () => {
     const storage = fakeStorage();
-    saveState(storage, sampleState());
-    expect(JSON.parse(storage.raw.get(STORAGE_KEY)).workouts).toHaveLength(2);
+    expect(saveApp(storage, sampleApp())).toBe(true);
+    expect(JSON.parse(storage.raw.get(STORAGE_KEY)).profiles).toHaveLength(2);
   });
 
-  it('R4.1 / R4.2: workouts, XP, level, bests, and draft survive a reload', () => {
+  it('R4.1 / R4.2: profiles, entries, and the active profile survive a reload', () => {
     const storage = fakeStorage();
-    const before = sampleState();
-    saveState(storage, before);
-    const after = loadState(storage);
+    const before = sampleApp();
+    saveApp(storage, before);
+    const after = loadApp(storage);
     expect(after).toEqual(before);
-    expect(after.totalXp).toBe(50);
-    expect(levelOf(after)).toBe(2);
-    expect(after.draft.sets).toHaveLength(1);
+    expect(activeProfile(after).name).toBe('Ash');
+    const stats = profileStats(activeProfile(after));
+    expect(stats.entryCount).toBe(2);
+    expect(stats.totalXp).toBe(70);
+    expect(stats.level).toBe(2);
   });
 
-  it('R4.3: no saved data gives a fresh state', () => {
-    const s = loadState(fakeStorage());
-    expect(s).toEqual(createInitialState());
-    expect(levelOf(s)).toBe(1);
+  it('R4.3: no saved data gives a fresh app with no profiles', () => {
+    expect(loadApp(fakeStorage())).toEqual(createApp());
   });
 
-  it('R4.3: unreadable JSON gives a fresh state', () => {
-    expect(loadState(fakeStorage({ [STORAGE_KEY]: '{not json' }))).toEqual(createInitialState());
-  });
-
-  it('R4.3: wrong-shaped data gives a fresh state', () => {
-    for (const bad of ['null', '42', '[]', '{"workouts":"x"}', '{"workouts":[],"totalXp":-1}']) {
-      expect(loadState(fakeStorage({ [STORAGE_KEY]: bad }))).toEqual(createInitialState());
+  it('R4.3: unreadable or wrong-shaped data gives a fresh app', () => {
+    const bad = [
+      '{not json', 'null', '42', '[]', '{"profiles":"x"}',
+      '{"version":2,"activeProfileId":null,"profiles":[{"id":"a","name":"A"}]}',
+      JSON.stringify({ ...sampleApp(), activeProfileId: 'missing' }),
+    ];
+    for (const raw of bad) {
+      expect(loadApp(fakeStorage({ [STORAGE_KEY]: raw }))).toEqual(createApp());
     }
   });
 
@@ -63,7 +65,13 @@ describe('R4 persistence', () => {
       getItem() { throw new Error('blocked'); },
       setItem() { throw new Error('blocked'); },
     };
-    expect(loadState(broken)).toEqual(createInitialState());
-    expect(() => saveState(broken, sampleState())).not.toThrow();
+    expect(loadApp(broken)).toEqual(createApp());
+    expect(saveApp(broken, sampleApp())).toBe(false);
+  });
+
+  it('R4.4: round-1 data is not loaded', () => {
+    const v1 = JSON.stringify({ workouts: [{ sets: [] }], totalXp: 300, pbLevels: 2, bests: {}, draft: { sets: [] } });
+    expect(LEGACY_KEY).toBe('grimlift:v1');
+    expect(loadApp(fakeStorage({ [LEGACY_KEY]: v1 }))).toEqual(createApp());
   });
 });
