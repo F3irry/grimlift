@@ -162,9 +162,9 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
   gaining. It is reached when a weigh-in saved after the goal was created is at
   or past the target in the goal's direction.
 - **R11.4** A weekly training target is a number of days per week (1–7).
-  Progress = days this week with at least one entry ÷ target. It is reached the
-  first time a week has at least that many such days, counting only entries
-  logged after the goal was created.
+  Only entries logged after the goal was created count. Progress = days this
+  week with at least one such entry ÷ target. It is reached the first time a
+  week has at least that many such days.
 - **R11.5** A custom habit has a name (1–60 characters) and a number of days per
   week (1–7). The user ticks or unticks days of the current week, from the day
   the goal was created up to today; other days can't be ticked. Progress = days

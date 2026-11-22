@@ -166,10 +166,10 @@ describe('R11.4 weekly training targets', () => {
     expect(goalStatus(only(p), p, at(30))).toMatchObject({ percent: 0, reached: true, remaining: '3 more days this week' });
   });
 
-  it('R11.4: only lifts logged after the goal was created count toward reaching it', () => {
+  it('R11.4: only lifts logged after the goal was created count, for progress and reaching', () => {
     let p = lift(newProfile(), ['Squat', 1, 5, 100], at(23, 7)).profile;
     p = goal(p, { type: 'training', daysPerWeek: '1' }, at(23, 9)).profile;
-    expect(goalStatus(only(p), p, at(23, 9)).reached).toBe(false);
+    expect(goalStatus(only(p), p, at(23, 9))).toMatchObject({ percent: 0, reached: false });
     p = lift(p, ['Squat', 1, 5, 100], at(23, 10)).profile;
     expect(goalStatus(only(p), p, at(23, 10)).reached).toBe(true);
   });

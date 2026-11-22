@@ -137,8 +137,11 @@ function daysThisWeek(days, now) {
 
 const entryDays = (entries) => entries.map((e) => dayKey(new Date(e.loggedAt)));
 
+/** R11.4: only entries logged after the goal was created count. */
+const trainingDays = (g, profile) => entryDays(profile.entries.filter((e) => e.loggedAt >= g.createdAt));
+
 function trainingReached(g, profile) {
-  return anyWeekHas(entryDays(profile.entries.filter((e) => e.loggedAt >= g.createdAt)), g.daysPerWeek);
+  return anyWeekHas(trainingDays(g, profile), g.daysPerWeek);
 }
 
 function habitReached(g) {
@@ -221,7 +224,7 @@ export function goalStatus(goal, profile, now = new Date()) {
   if (goal.type === 'lift') s = liftStatus(goal, profile, reached);
   else if (goal.type === 'bodyweight') s = bodyweightStatus(goal, profile, reached);
   else if (goal.type === 'training') {
-    s = weeklyStatus(`Train ${goal.daysPerWeek} day${goal.daysPerWeek === 1 ? '' : 's'} a week`, entryDays(profile.entries), goal, now);
+    s = weeklyStatus(`Train ${goal.daysPerWeek} day${goal.daysPerWeek === 1 ? '' : 's'} a week`, trainingDays(goal, profile), goal, now);
   } else {
     s = weeklyStatus(`${goal.name} · ${goal.daysPerWeek} day${goal.daysPerWeek === 1 ? '' : 's'} a week`, goal.checks, goal, now);
   }
