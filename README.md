@@ -39,15 +39,35 @@ alerts, and level-ups. Everything runs in your browser and is saved in
   calls you out, without insults, and challenges you to come back. Your first
   lift back earns a +50 XP comeback bonus. The current and best streak are on
   your profile.
+- **What to train, by body part**: the Train page suggests a couple of
+  exercises for legs, back, chest, shoulders, arms, and core, with sets × reps.
+  Exercises from your lift goals come first, then ones you already do. Each has
+  a "Log it" link that opens the log form with the exercise filled in. With no
+  goals yet, you get a simple one-move-per-body-part starter plan.
+- **Your limitations come first**: on your profile, tick body areas to protect
+  (knees, hips, lower back, shoulders, elbows, wrists), and set the equipment
+  you have and your experience. Anything that loads a protected area or needs
+  missing equipment is never suggested, even if a goal names it. The Train page
+  tells you which goal is on hold and what to do instead.
+- **Weekly challenges, +30 XP each**: up to three small challenges every week,
+  set from your goals: train a number of days (one more than last week, never
+  more than 6, or a rest day after a 7-day week), weigh in (with a healthy pace
+  of at most 1% of body weight a week when losing, 0.5% when gaining), and a
+  small step on a lift goal (2.5% heavier for beginners, 5% otherwise, or one
+  more rep). If your weight is changing faster than that pace, the Train page
+  warns you to slow down.
 - **Keeps your progress**: everything is still there after you close and reopen
   the app.
 - **Readable gothic style**: blackletter headings with an easy-to-read serif
   for everything else, at 16px or larger.
 
-Data from an earlier version of Grimlift (round 2) is carried over
+Data from earlier versions of Grimlift (rounds 2–4) is carried over
 automatically the first time you open this version.
 
-See `spec.md` for the exact rules (R1–R12), and `docs/decisions/` for the
+Suggestions are general, not medical advice. If something hurts, stop and ask a
+professional.
+
+See `spec.md` for the exact rules (R1–R13), and `docs/decisions/` for the
 reasoning behind key design choices.
 
 ## Run
