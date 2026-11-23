@@ -280,6 +280,22 @@ legend { color: var(--gold); font-weight: 600; font-size: 1rem; padding: 0 0.3re
   .limits-form { grid-template-columns: 1fr 1fr; }
   .limits-form button { grid-column: 1 / -1; }
 }
+.limits-form button { justify-self: start; }
+
+/* R14 fuel page ----------------------------------------------------------- */
+.meal-focuses { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-top: 1rem; }
+.focus {
+  border: 1px solid var(--panel-edge); border-top: 3px solid var(--blood-bright);
+  background: var(--bg-deep); padding: 0.75rem 0.9rem;
+}
+.focus h3 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+.focus .for { color: var(--ink-dim); margin: 0 0 0.3rem; }
+.focus .why { color: var(--gold); font-weight: 600; margin: 0 0 0.5rem; }
+.focus ul { list-style: none; padding: 0; margin: 0; }
+.focus li { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0 0.75rem; padding: 0.4rem 0; border-bottom: 1px dashed var(--panel-edge); }
+.focus li:last-child { border-bottom: none; }
+.focus .slot { color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.08em; font-size: 1rem; }
+.focus .meal-name { color: var(--bone); font-weight: 600; }
 
 /* R6 feedback ------------------------------------------------------------ */
 .fx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }

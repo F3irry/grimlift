@@ -17,7 +17,8 @@ import { dayKey, weekDays, parseDayKey } from './logic/dates.js';
 import { toughLove } from './logic/streaks.js';
 import { currentChallenges, paceWarnings, CHALLENGE_XP } from './logic/challenges.js';
 import { suggestions, blockedGoals } from './logic/exercises.js';
-import { setLimitations, currentLimitations, AREA_LABELS, EQUIPMENT_LABELS } from './logic/limitations.js';
+import { setLimitations, currentLimitations, AREA_LABELS, EQUIPMENT_LABELS, DIET_LABELS } from './logic/limitations.js';
+import { mealSuggestions } from './logic/meals.js';
 import { loadApp, saveApp } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
@@ -56,7 +57,7 @@ function setMsg(id, ok, text) {
 function route() {
   const hash = location.hash.replace(/^#\/?/, '');
   if (!activeProfile(app) || hash === 'new') return 'new';
-  if (hash === 'profile' || hash === 'train') return hash;
+  if (hash === 'profile' || hash === 'train' || hash === 'fuel') return hash;
   return 'log';
 }
 
@@ -338,10 +339,41 @@ function renderTrain(profile) {
   $('suggestion-list').replaceChildren(...suggestions(profile).map(suggestionCard));
 }
 
+// ---------- R14 fuel page ----------
+function dietSummary(profile) {
+  const { diet } = currentLimitations(profile);
+  const link = el('a', null, 'Change');
+  link.href = '#/profile';
+  const text = diet.length ? `Fitted to your diet: ${diet.map((d) => DIET_LABELS[d]).join(', ')}. ` : 'No diet limits set. ';
+  $('fuel-diet').replaceChildren(text, link);
+}
+
+function focusCard(f) {
+  const card = el('div', `focus focus-${f.focus}`);
+  card.append(el('h3', null, f.title));
+  if (f.goals.length) card.append(el('p', 'for', `Goal${f.goals.length === 1 ? '' : 's'}: ${f.goals.join(', ')}`));
+  card.append(el('p', 'why', f.why));
+  const ul = el('ul');
+  for (const m of f.meals) {
+    const li = el('li');
+    li.append(el('span', 'slot', m.slotLabel), el('span', 'meal-name', m.name));
+    ul.append(li);
+  }
+  card.append(ul);
+  return card;
+}
+
+function renderFuel(profile) {
+  $('fuel-goal-prompt').hidden = profile.goals.length > 0;
+  dietSummary(profile);
+  $('meal-list').replaceChildren(...mealSuggestions(profile).map(focusCard));
+}
+
 function fillLimitsForm(profile) {
   const form = $('limits-form');
   const l = currentLimitations(profile);
   form.querySelectorAll('input[name="areas"]').forEach((box) => { box.checked = l.areas.includes(box.value); });
+  form.querySelectorAll('input[name="diet"]').forEach((box) => { box.checked = l.diet.includes(box.value); });
   form.elements.equipment.value = l.equipment;
   form.elements.experience.value = l.experience;
 }
@@ -356,6 +388,7 @@ function render() {
   $('log-page').hidden = page !== 'log';
   $('profile-page').hidden = page !== 'profile';
   $('train-page').hidden = page !== 'train';
+  $('fuel-page').hidden = page !== 'fuel';
   $('status').hidden = !profile;
   $('nav').querySelectorAll('a').forEach((a) => {
     a.classList.toggle('active', a.dataset.route === page);
@@ -369,6 +402,7 @@ function render() {
     renderStreakBanner(stats);
     renderLog(profile, switched);
     renderTrain(profile);
+    renderFuel(profile);
     renderProfile(profile, stats, switched);
     if (prefill && page === 'log') {
       $('exercise').value = prefill;
@@ -547,9 +581,14 @@ $('limits-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const form = e.target;
   const before = activeProfile(app);
-  const areas = [...form.querySelectorAll('input[name="areas"]:checked')].map((b) => b.value);
-  const r = setLimitations(before, { areas, equipment: form.elements.equipment.value, experience: form.elements.experience.value });
-  setMsg('limits-msg', r.ok, r.ok ? 'Saved. The Train page now fits these.' : r.error);
+  const ticked = (name) => [...form.querySelectorAll(`input[name="${name}"]:checked`)].map((b) => b.value);
+  const r = setLimitations(before, {
+    areas: ticked('areas'),
+    diet: ticked('diet'),
+    equipment: form.elements.equipment.value,
+    experience: form.elements.experience.value,
+  });
+  setMsg('limits-msg', r.ok, r.ok ? 'Saved. The Train and Fuel pages now fit these.' : r.error);
   if (!r.ok) return;
   document.activeElement?.blur();
   commitProfile(before, r.profile, undefined, e.submitter ?? form.querySelector('button'));

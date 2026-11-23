@@ -18,6 +18,7 @@
         <nav id="nav" class="nav" aria-label="Pages">
           <a href="#/log" data-route="log">Log</a>
           <a href="#/train" data-route="train">Train</a>
+          <a href="#/fuel" data-route="fuel">Fuel</a>
           <a href="#/profile" data-route="profile">Profile</a>
           <label class="switcher">
             <span class="sr-only">Active profile</span>
@@ -108,6 +109,17 @@
           </div>
         </section>
 
+        <section id="fuel-page" class="page" hidden>
+          <div class="panel">
+            <h2>Fuel the grind</h2>
+            <p class="lede">Meals picked for what you're chasing. Strength gets built in the kitchen too.</p>
+            <p id="fuel-goal-prompt" class="lede" hidden>No goals yet, so here's an all-round plan to fuel your training. <a href="#/profile">Add a goal</a> to get meals built around it.</p>
+            <p id="fuel-diet" class="train-limits"></p>
+            <div id="meal-list" class="meal-focuses"></div>
+            <p id="fuel-safety" class="safety">These suggestions are general, not medical advice. Packaged foods can still contain traces of what your diet rules out, so check the label. Ask a doctor or dietitian about allergies, health conditions, or how much you should eat.</p>
+          </div>
+        </section>
+
         <section id="profile-page" class="page" hidden>
           <div class="panel">
             <h2 id="profile-title">Profile</h2>
@@ -181,7 +193,7 @@
 
           <div class="panel" id="limits-panel">
             <h3>Limitations</h3>
-            <p class="lede">The Train page only suggests what fits these. Change them any time.</p>
+            <p class="lede">The Train and Fuel pages only suggest what fits these. Change them any time.</p>
             <form id="limits-form" class="limits-form" autocomplete="off" novalidate>
               <fieldset class="areas">
                 <legend>Body areas to protect</legend>
@@ -206,6 +218,15 @@
                   <option value="advanced">Advanced</option>
                 </select>
               </label>
+              <fieldset class="areas diet">
+                <legend>Diet (for meal suggestions)</legend>
+                <label class="check"><input type="checkbox" name="diet" value="vegetarian" /> Vegetarian</label>
+                <label class="check"><input type="checkbox" name="diet" value="vegan" /> Vegan</label>
+                <label class="check"><input type="checkbox" name="diet" value="noDairy" /> No dairy</label>
+                <label class="check"><input type="checkbox" name="diet" value="noNuts" /> No nuts</label>
+                <label class="check"><input type="checkbox" name="diet" value="noGluten" /> No gluten</label>
+                <label class="check"><input type="checkbox" name="diet" value="noPork" /> No pork</label>
+              </fieldset>
               <button type="submit" class="btn">Save limitations</button>
             </form>
             <p id="limits-msg" class="error" role="status"></p>
