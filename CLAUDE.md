@@ -32,8 +32,10 @@ user's problem and `spec.md` for the numbered rules (R1.1, R2.1, …).
 - `src/storage.js` — `localStorage` load/save; takes a storage object so tests
   can pass a fake.
 - `src/main.js`, `src/style.css`, `index.html` — UI only; keep rules out of here.
-- `tests/` — Vitest files. `tests/ui.test.js` checks R5/R7 by reading
-  `index.html` and `src/style.css` as text.
+- `tests/` — Vitest files. `tests/ui.test.js` checks R5, R7, R12, and R13
+  markup by reading `index.html` and `src/style.css` as text. `tests/helpers.js`
+  has `at(day, hour)`, `newProfile()`, `lift()`, and `SHAMING` (the word list
+  every user-facing message is checked against).
 
 ## Data model
 
@@ -49,6 +51,15 @@ captured at a point in time are a goal's `baselineKg` (lift) and `startKg`
 
 Logic that depends on the date takes `now` as a parameter. Tests build dates
 with the local `new Date(y, m, d, h)` constructor so they pass in any timezone.
+Tests must pass `now` explicitly to anything that touches XP or level
+(`profileStats`, `profileLevel`, `progressChange`, `challengeXp`, …): challenge
+XP depends on the date, so the real-clock default makes a test change its result
+once the real date passes the test dates.
+
+XP is replayed from records, so changing any XP rule (the per-entry formula,
+`COMEBACK_XP`, `CHALLENGE_XP`, challenge formulas, or the catalog's `loads` and
+`equipment`) rewrites every user's past XP and levels. Say so to the user when
+proposing such a change.
 
 Saved data lives under the `localStorage` key `grimlift:v4` (v3 and v2 are
 migrated on load; v1 is ignored). If the saved shape
@@ -108,9 +119,17 @@ old data or start fresh. Don't decide that yourself.
 - Every `font-size` must be `px`, `rem`, or `clamp(min, …)` and at least 16px /
   1rem. `em`, `%`, and keywords make the test fail on purpose (R5.2).
 - `#streak-banner` must stay inside `#log-page`, before the form, with no
-  buttons (R12.3). Any new tough-love or comeback text must pass the R12.4
-  shaming-word test in `tests/streaks.test.js`. Passing it isn't enough: read
-  the message yourself, since the word list only catches obvious insults.
+  buttons (R12.3).
+- Any new user-facing message (tough love, comeback, challenge, pace warning,
+  blocked-goal note, "nothing fits") must pass the `SHAMING` check from
+  `tests/helpers.js` (R12.4, R13.14) and be added to a test that checks it.
+  Passing it isn't enough: read the message yourself, since the word list only
+  catches obvious insults.
+- The `#limits-form` checkbox and option values must match `AREAS`,
+  `EQUIPMENT`, and `EXPERIENCE` in `src/logic/limitations.js`, in the same
+  order (R13.1). The nav needs `a[data-route="train"]` and `#train-page` needs
+  `#challenge-list`, `#train-warnings`, `#suggestion-list`,
+  `#train-goal-prompt`, and `#train-safety` (R13.13).
 - `#log-page` in `index.html` must have exactly one `<form>`, exactly one
   `<button>` (the submit), and fields named exercise, sets, reps, weight, unit
   in that order (R7.1). Buttons added by JS at runtime aren't checked, so don't
