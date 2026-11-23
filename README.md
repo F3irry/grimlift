@@ -33,6 +33,12 @@ alerts, and level-ups. Everything runs in your browser and is saved in
 
   Reaching a goal gives +1 level and a celebration. There's also a one-line
   notes field.
+- **Weekly streaks with tough love**: your streak is the number of weeks in a
+  row you've logged at least one lift (rest days are fine). If a streak of two
+  weeks or more breaks because a whole week went by with no lifts, the log page
+  calls you out, without insults, and challenges you to come back. Your first
+  lift back earns a +50 XP comeback bonus. The current and best streak are on
+  your profile.
 - **Keeps your progress**: everything is still there after you close and reopen
   the app.
 - **Readable gothic style**: blackletter headings with an easy-to-read serif
@@ -41,7 +47,8 @@ alerts, and level-ups. Everything runs in your browser and is saved in
 Data from an earlier version of Grimlift (round 2) is carried over
 automatically the first time you open this version.
 
-See `spec.md` for the exact rules (R1–R11).
+See `spec.md` for the exact rules (R1–R12), and `docs/decisions/` for the
+reasoning behind key design choices.
 
 ## Run
 
