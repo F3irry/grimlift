@@ -24,3 +24,6 @@ easy to stop showing up.
 - R10: I can edit my personal info, like my body weight, anytime.
 - R8 changed: the single goal field is replaced by a fuller fitness goals section.
 - R11: The goals section lets me pick what I'm going for, set a target, and see how close I am.
+
+## Round 4 requirements
+- R12: When a streak breaks, the app responds with tough love: it challenges and pushes the user to come back stronger, but never insults or degrades them.
