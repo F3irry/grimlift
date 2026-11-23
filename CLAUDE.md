@@ -63,6 +63,13 @@ XP is replayed from records, so changing any XP rule (the per-entry formula,
 `equipment`) rewrites every user's past XP and levels. Say so to the user when
 proposing such a change.
 
+Meals and diet (R14) only suggest: they never earn XP, never affect exercises or
+challenges, and nothing about meals is stored. Keep it that way unless the user
+asks; a test checks that diet changes no XP, suggestion, or challenge. Any
+change to `MEALS` must keep every focus × slot covered by a meal with an empty
+`contains` (a test checks it), and food-group tags should err on the cautious
+side (oats = gluten, peanuts = nuts).
+
 Saved data lives under the `localStorage` key `grimlift:v5` (v4, v3, and v2
 are migrated on load; v1 is ignored). If the saved shape
 changes, use a new key (`grimlift:v6`) and ask the user whether to migrate the
@@ -114,6 +121,15 @@ old data or start fresh. Don't decide that yourself.
 - Stop the server with PowerShell:
   `Get-NetTCPConnection -LocalPort 5179 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`.
 
+## Environment (Windows)
+
+- The Bash tool is Git Bash; PowerShell is also available.
+- Python heredocs inside Bash commands break (quoting, CRLF files). Edit files
+  with the Edit tool, or write a script to the scratchpad with Write and run it.
+- Git prints `LF will be replaced by CRLF` on every add; that's harmless.
+- A background dev server reports exit code 127 when you stop it; that's
+  expected.
+
 ## Constraints from the UI tests (`tests/ui.test.js`)
 
 - The blackletter font (`var(--font-display)`) may only be used in CSS rules
@@ -123,7 +139,7 @@ old data or start fresh. Don't decide that yourself.
 - `#streak-banner` must stay inside `#log-page`, before the form, with no
   buttons (R12.3).
 - Any new user-facing message (tough love, comeback, challenge, pace warning,
-  blocked-goal note, "nothing fits") must pass the `SHAMING` check from
+  blocked-goal note, "nothing fits", meal focus titles and reasons) must pass the `SHAMING` check from
   `tests/helpers.js` (R12.4, R13.14) and be added to a test that checks it.
   Passing it isn't enough: read the message yourself, since the word list only
   catches obvious insults.
@@ -133,7 +149,10 @@ old data or start fresh. Don't decide that yourself.
   `#challenge-list`, `#train-warnings`, `#suggestion-list`,
   `#train-goal-prompt`, and `#train-safety` (R13.13). The nav needs
   `a[data-route="fuel"]` and `#fuel-page` needs `#meal-list`, `#fuel-diet`,
-  `#fuel-goal-prompt`, and `#fuel-safety` saying "not medical advice" (R14.5).
+  `#fuel-goal-prompt`, and `#fuel-safety`, whose text must keep "not medical
+  advice", "traces", and "doctor or dietitian" (R14.5). `#fuel-page` must have
+  no `<form>`, `<button>`, or `<input>` (R14.6: suggest only, no meal log).
+  Any other screen that shows meals needs the same not-medical-advice note.
 - `#log-page` in `index.html` must have exactly one `<form>`, exactly one
   `<button>` (the submit), and fields named exercise, sets, reps, weight, unit
   in that order (R7.1). Buttons added by JS at runtime aren't checked, so don't
