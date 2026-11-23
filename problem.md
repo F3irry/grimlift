@@ -27,3 +27,6 @@ easy to stop showing up.
 
 ## Round 4 requirements
 - R12: When a streak breaks, the app responds with tough love: it challenges and pushes the user to come back stronger, but never insults or degrades them.
+
+## Round 5 requirements
+- R13: The app suggests exercises and challenges based on the user's goals and limitations, pushing them in healthy ways.
