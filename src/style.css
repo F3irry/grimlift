@@ -78,6 +78,20 @@ a { color: var(--gold); }
 
 .xp { flex: 1 1 280px; max-width: 480px; }
 .xp-text, .xp-total { font-size: 1rem; color: var(--ink-dim); }
+.streak { font-size: 1rem; color: var(--gold); letter-spacing: 0.04em; }
+
+/* R12 tough love ---------------------------------------------------------- */
+.streak-banner {
+  margin: 0 0 1rem; padding: 0.9rem 1.1rem;
+  border: 2px solid var(--blood-bright); border-left-width: 6px; color: var(--bone);
+  background: linear-gradient(90deg, rgba(140, 28, 36, 0.45), rgba(5, 4, 6, 0.85));
+  box-shadow: 0 0 24px rgba(210, 58, 69, 0.35);
+}
+.streak-banner h3 { margin: 0 0 0.3rem; color: var(--blood-bright); }
+.streak-banner p { margin: 0.25rem 0; }
+.streak-challenge { color: var(--gold); font-weight: 600; }
+.toast.comeback { border-color: var(--blood-bright); box-shadow: 0 0 28px rgba(210, 58, 69, 0.5); }
+.toast.comeback strong { color: var(--blood-bright); }
 .xp-bar { height: 16px; margin: 0.35rem 0; border: 1px solid var(--gold-dim); background: var(--bg-deep); overflow: hidden; }
 .xp-fill {
   height: 100%; width: 0;

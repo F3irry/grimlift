@@ -36,6 +36,7 @@
             <div class="xp-fill" id="xp-fill"></div>
           </div>
           <div class="xp-total"><span id="xp-total">0</span> XP total · bonus levels: <span id="pb-levels">0</span></div>
+          <div id="streak" class="streak">Streak: 0 weeks</div>
         </div>
       </section>
 
@@ -58,6 +59,11 @@
 
         <section id="log-page" class="panel page" hidden>
           <h2>Log a lift</h2>
+          <div id="streak-banner" class="streak-banner" role="status" hidden>
+            <h3 id="streak-title">Your streak broke.</h3>
+            <p id="streak-message"></p>
+            <p id="streak-challenge" class="streak-challenge"></p>
+          </div>
           <form id="log-form" class="log-form" autocomplete="off" novalidate>
             <label class="f-exercise">Exercise
               <input id="exercise" name="exercise" list="exercise-list" placeholder="Back Squat" required />
@@ -94,6 +100,8 @@
               <div><dt>Total sets</dt><dd id="st-sets">0</dd></div>
               <div><dt>Body weight</dt><dd id="st-bw">—</dd></div>
               <div><dt>Goals reached</dt><dd id="st-goals">0</dd></div>
+              <div><dt>Current streak</dt><dd id="st-streak">0 weeks</dd></div>
+              <div><dt>Best streak</dt><dd id="st-best-streak">0 weeks</dd></div>
             </dl>
           </div>
 

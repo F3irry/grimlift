@@ -14,6 +14,7 @@ import { formatWeight } from './logic/units.js';
 import { addWeighIn, deleteWeighIn, weighInHistory } from './logic/bodyweight.js';
 import { addGoal, deleteGoal, goalStatus, setGoalNote, toggleHabitDay, GOAL_GROUPS } from './logic/goals.js';
 import { dayKey, weekDays, parseDayKey } from './logic/dates.js';
+import { toughLove } from './logic/streaks.js';
 import { loadApp, saveApp } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
@@ -24,6 +25,7 @@ const el = (tag, cls, text) => {
   return node;
 };
 const NEW_PROFILE = '__new__';
+const weeks = (n) => `${n} week${n === 1 ? '' : 's'}`;
 const GROUP_ORDER = ['Muscle growth', 'How I want to look', 'Health habits'];
 
 let app = loadApp(window.localStorage);
@@ -105,6 +107,17 @@ function renderStatus(stats) {
   $('pb-levels').textContent = stats.pbLevels + stats.goalLevels;
   $('xp-fill').style.width = `${(stats.xp.current / stats.xp.needed) * 100}%`;
   $('xp-bar').setAttribute('aria-valuenow', String(stats.xp.current));
+  $('streak').textContent = `Streak: ${weeks(stats.streak)}`; // R12.7
+}
+
+/** R12.3: tough-love banner while a streak is broken; gone after the next log. */
+function renderStreakBanner(stats) {
+  $('streak-banner').hidden = !stats.streakBroken;
+  if (!stats.streakBroken) return;
+  const t = toughLove(stats.lostWeeks);
+  $('streak-title').textContent = t.title;
+  $('streak-message').textContent = t.message;
+  $('streak-challenge').textContent = t.challenge;
 }
 
 function renderLog(profile, switched) {
@@ -204,6 +217,8 @@ function renderProfile(profile, stats, switched) {
   $('st-sets').textContent = stats.totalSets;
   $('st-bw').textContent = stats.bodyWeight ?? '—';
   $('st-goals').textContent = `${stats.goalsReached} / ${stats.goalCount}`;
+  $('st-streak').textContent = weeks(stats.streak);
+  $('st-best-streak').textContent = weeks(stats.bestStreak);
 
   renderGoals(profile);
 
@@ -271,6 +286,7 @@ function render() {
     const switched = profile.id !== lastProfileId;
     const stats = profileStats(profile);
     renderStatus(stats);
+    renderStreakBanner(stats);
     renderLog(profile, switched);
     renderProfile(profile, stats, switched);
   }
@@ -323,6 +339,14 @@ function showPb(event) {
   pbTimer = setTimeout(() => { box.hidden = true; }, 4500);
 }
 
+/** R12.6: the comeback alert. */
+function showComebackToast(event) {
+  const toast = el('div', 'toast comeback');
+  toast.append(el('strong', null, 'Comeback'), el('span', null, event.text.replace(/^Comeback: /, '')));
+  $('toasts').append(toast);
+  setTimeout(() => toast.remove(), 6000);
+}
+
 function showGoalToast(event) {
   const toast = el('div', 'toast');
   toast.append(el('strong', null, 'Goal reached'), el('span', null, `${event.title} · +1 level`));
@@ -351,6 +375,7 @@ function playFeedback(events) {
       retrigger($('log-btn'), 'struck');
       popXp(ev.text, $('log-btn'));
     }
+    if (ev.type === 'comeback') showComebackToast(ev);
     if (ev.type === 'pb') showPb(ev);
     if (ev.type === 'goal') showGoalToast(ev);
     if (ev.type === 'level') setTimeout(() => showLevelUp(ev), reducedMotion() ? 0 : 450);
