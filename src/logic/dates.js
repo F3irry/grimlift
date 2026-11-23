@@ -30,3 +30,10 @@ export function weekDays(date) {
     return dayKey(d);
   });
 }
+
+/** The week key `n` weeks after (or before, if negative) the week key `week`. */
+export function shiftWeek(week, n) {
+  const d = parseDayKey(week);
+  d.setDate(d.getDate() + 7 * n);
+  return dayKey(d);
+}

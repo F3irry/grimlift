@@ -32,7 +32,7 @@ const DAYS_ERROR = 'Days per week must be a whole number from 1 to 7.';
 // ---------- lift targets (R11.2) ----------
 
 /** Heaviest kg logged for `exercise` with at least `minReps` reps (0 if none). */
-function bestKgWithReps(entries, exercise, minReps) {
+export function bestKgWithReps(entries, exercise, minReps) {
   const key = normalizeName(exercise);
   let best = 0;
   for (const e of entries) {

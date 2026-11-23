@@ -4,6 +4,7 @@ import { normalizeName, validateEntry } from './entries.js';
 import { toKg } from './units.js';
 import { goalLevels, reachedGoalIds, goalStatus } from './goals.js';
 import { comebacks, comebackText, COMEBACK_XP } from './streaks.js';
+import { challengeXp, currentChallenges, CHALLENGE_XP } from './challenges.js';
 
 export const BASE_XP = 20;
 export const XP_PER_SET = 5;
@@ -30,18 +31,25 @@ export function levelFor(totalXp, pbLevels, goalLvls = 0) {
   return 1 + xpLevels(totalXp) + pbLevels + goalLvls;
 }
 
-/** R3.4: everything that makes up a profile's level. */
-export function profileLevel(profile) {
-  const { totalXp, pbLevels } = summarize(profile.entries);
+/** R3.4: everything that makes up a profile's level. XP includes challenge XP (R2.1, R13.7). */
+export function profileLevel(profile, now = new Date()) {
+  const s = summarize(profile.entries);
+  const totalXp = s.totalXp + challengeXp(profile, now);
+  const { pbLevels } = s;
   const gl = goalLevels(profile);
   return { totalXp, pbLevels, goalLevels: gl, level: levelFor(totalXp, pbLevels, gl) };
 }
 
 /**
- * R6.1: what changed between two versions of a profile: goals newly reached
- * and the level before and after. Used for weigh-ins and habit ticks too.
+ * R6.1: what changed between two versions of a profile: challenges newly
+ * completed this week (R13.12), goals newly reached, and the level before and
+ * after. Used for weigh-ins and habit ticks too.
  */
 export function progressChange(before, after, now = new Date()) {
+  const wasDone = new Set(currentChallenges(before, now).filter((c) => c.done).map((c) => c.id));
+  const challengesDone = currentChallenges(after, now)
+    .filter((c) => c.done && !wasDone.has(c.id))
+    .map((c) => ({ id: c.id, title: c.title }));
   const had = new Set(reachedGoalIds(before));
   const goalsReached = reachedGoalIds(after)
     .filter((id) => !had.has(id))
@@ -49,13 +57,16 @@ export function progressChange(before, after, now = new Date()) {
       const s = goalStatus(after.goals.find((g) => g.id === id), after, now);
       return { id, title: s.title };
     });
+  const levelAfter = profileLevel(after, now);
   return {
-    xpEarned: 0,
+    xpEarned: CHALLENGE_XP * challengesDone.length,
     comeback: null,
+    challengesDone,
     personalBest: false,
     goalsReached,
-    levelBefore: profileLevel(before).level,
-    levelAfter: profileLevel(after).level,
+    levelBefore: profileLevel(before, now).level,
+    levelAfter: levelAfter.level,
+    totalXp: levelAfter.totalXp,
   };
 }
 
@@ -118,17 +129,17 @@ export function logEntry(profile, input, now = new Date()) {
   const lostWeeks = after.comebackIds.get(entry.id);
   const comeback = lostWeeks ? { lostWeeks, bonusXp: COMEBACK_XP } : null; // R12.5
 
+  const change = progressChange(profile, next, now);
   return {
     ok: true,
     profile: next,
     result: {
-      ...progressChange(profile, next, now),
+      ...change,
       entry,
       exerciseName: best.name,
-      xpEarned: xpForEntry(entry.sets) + (comeback ? comeback.bonusXp : 0),
+      xpEarned: xpForEntry(entry.sets) + (comeback ? comeback.bonusXp : 0) + change.xpEarned,
       comeback,
       personalBest: after.pbIds.has(entry.id),
-      totalXp: after.totalXp,
     },
   };
 }
@@ -147,6 +158,9 @@ export function feedbackFor(result) {
   if (result.comeback) {
     const { lostWeeks, bonusXp } = result.comeback;
     events.push({ type: 'comeback', lostWeeks, bonusXp, text: comebackText(lostWeeks) }); // R12.6
+  }
+  for (const c of result.challengesDone ?? []) {
+    events.push({ type: 'challenge', id: c.id, title: c.title, xp: CHALLENGE_XP, text: `Challenge done: ${c.title} · +${CHALLENGE_XP} XP` }); // R13.12
   }
   if (result.personalBest) {
     const { weight, reps, unit } = result.entry;

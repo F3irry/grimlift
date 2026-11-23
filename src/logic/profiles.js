@@ -9,7 +9,7 @@ export { profileLevel };
 
 /** R8.1: an app with no profiles. */
 export function createApp() {
-  return { version: 3, activeProfileId: null, profiles: [] };
+  return { version: 4, activeProfileId: null, profiles: [] };
 }
 
 export function activeProfile(app) {
@@ -56,6 +56,7 @@ export function createProfile(app, input, now = new Date()) {
     weighIns,
     goals: [],
     goalNote: '',
+    limitations: [], // R13.1: defaults until the user saves some
   };
   return {
     ok: true,
@@ -91,7 +92,7 @@ export function deleteProfile(app, id) {
 /** R8.4: summary for the profile page; weights in the preferred unit (R3.5, R9.2). */
 export function profileStats(profile, now = new Date()) {
   const s = summarize(profile.entries);
-  const lvl = profileLevel(profile);
+  const lvl = profileLevel(profile, now);
   const bw = currentBodyWeightKg(profile);
   const streak = streakStatus(profile.entries, now); // R12.1
   const records = Object.values(s.bests)

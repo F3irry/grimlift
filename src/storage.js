@@ -3,9 +3,12 @@ import { createApp } from './logic/profiles.js';
 import { UNITS } from './logic/units.js';
 import { newWeighIn } from './logic/bodyweight.js';
 import { MAX_NOTE } from './logic/goals.js';
+import { AREAS, EQUIPMENT, EXPERIENCE } from './logic/limitations.js';
 
-export const STORAGE_KEY = 'grimlift:v3';
-/** R4.5: round-2 key, migrated on load when there is no v3 data. */
+export const STORAGE_KEY = 'grimlift:v4';
+/** R4.6: round-3/4 key, migrated on load when there is no v4 data. */
+export const V3_KEY = 'grimlift:v3';
+/** R4.5: round-2 key, migrated on load when there is neither v4 nor v3 data. */
 export const V2_KEY = 'grimlift:v2';
 /** R4.4: round-1 key. It is never read. */
 export const LEGACY_KEY = 'grimlift:v1';
@@ -47,7 +50,16 @@ function isGoal(g) {
   }
 }
 
-const isProfile = (p) =>
+const isLimitation = (l) =>
+  isObj(l) &&
+  isStr(l.at) &&
+  Array.isArray(l.areas) &&
+  l.areas.every((a) => AREAS.includes(a)) &&
+  new Set(l.areas).size === l.areas.length &&
+  EQUIPMENT.includes(l.equipment) &&
+  EXPERIENCE.includes(l.experience);
+
+const isV3Profile = (p) =>
   isObj(p) &&
   isStr(p.id) &&
   isStr(p.name) &&
@@ -63,9 +75,20 @@ const isProfile = (p) =>
 const hasValidActive = (a) =>
   a.activeProfileId === null || a.profiles.some((p) => p.id === a.activeProfileId);
 
-/** R4.3: accept only data shaped like a v3 app. */
+const isProfile = (p) => isV3Profile(p) && Array.isArray(p.limitations) && p.limitations.every(isLimitation);
+
+/** R4.3: accept only data shaped like a v4 app. */
 export function isValidApp(a) {
-  return isObj(a) && a.version === 3 && Array.isArray(a.profiles) && a.profiles.every(isProfile) && hasValidActive(a);
+  return isObj(a) && a.version === 4 && Array.isArray(a.profiles) && a.profiles.every(isProfile) && hasValidActive(a);
+}
+
+function isValidV3(a) {
+  return isObj(a) && a.version === 3 && Array.isArray(a.profiles) && a.profiles.every(isV3Profile) && hasValidActive(a);
+}
+
+/** R4.6: turn round-3/4 data into round-5 data. */
+export function migrateV3(v3) {
+  return { ...v3, version: 4, profiles: v3.profiles.map((p) => ({ ...p, limitations: [] })) };
 }
 
 const isV2Profile = (p) =>
@@ -101,14 +124,19 @@ function readJson(storage, key) {
   return raw == null ? undefined : JSON.parse(raw);
 }
 
-/** R4.2, R4.3, R4.5 */
+/** R4.2, R4.3, R4.5, R4.6 */
 export function loadApp(storage, now = new Date()) {
   try {
-    const v3 = readJson(storage, STORAGE_KEY);
-    if (v3 !== undefined) return isValidApp(v3) ? v3 : createApp();
+    const v4 = readJson(storage, STORAGE_KEY);
+    if (v4 !== undefined) return isValidApp(v4) ? v4 : createApp();
+    const v3 = readJson(storage, V3_KEY);
+    if (v3 !== undefined) {
+      const migrated = isValidV3(v3) ? migrateV3(v3) : null;
+      return migrated && isValidApp(migrated) ? migrated : createApp();
+    }
     const v2 = readJson(storage, V2_KEY);
     if (v2 !== undefined && isValidV2(v2)) {
-      const migrated = migrateV2(v2, now);
+      const migrated = migrateV3(migrateV2(v2, now));
       if (isValidApp(migrated)) return migrated;
     }
     return createApp();
