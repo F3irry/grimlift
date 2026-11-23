@@ -23,6 +23,8 @@ user's problem and `spec.md` for the numbered rules (R1.1, R2.1, …).
   - `bodyweight.js` weigh-ins (R10)
   - `goals.js` goal validation, progress, and reached status (R11)
   - `dates.js` local day/week keys (weeks start Monday)
+  - `streaks.js` weekly streaks, broken-streak state, comeback bonus,
+    tough-love messages (R12)
   - `profiles.js` creating, editing, switching, deleting profiles; level; stats
 - `src/storage.js` — `localStorage` load/save; takes a storage object so tests
   can pass a fake.

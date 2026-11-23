@@ -1,4 +1,4 @@
-# Grimlift — Specification (Round 3)
+# Grimlift — Specification (Round 4)
 
 Grimlift is a gym tracker with game-style progression. It runs locally in the
 browser, stores everything in `localStorage`, and needs no login or API keys.
@@ -6,6 +6,18 @@ This spec turns the requirements in `problem.md` and later rounds into testable
 rules. Each rule has an ID; tests name the IDs they check.
 
 Out of scope: meal tracking, body-part guidance, passwords, sync between devices.
+
+## Round 4 changes at a glance
+
+- Weekly training streaks: weeks in a row with at least one logged lift
+  (R12.1). The log page shows the current streak; the profile shows current and
+  best.
+- When a streak of 2+ weeks breaks, the log page shows a tough-love banner that
+  challenges the user to come back, without insults (R12.2–R12.4).
+- The first lift after a broken streak earns a +50 XP comeback bonus and a
+  comeback message (R12.5, R12.6).
+- No saved-data change: streaks and the bonus are derived from entries, so the
+  storage key stays `grimlift:v3`.
 
 ## Round 3 changes at a glance
 
@@ -29,6 +41,8 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
   is deleted.
 - **Week**: Monday to Sunday in the device's local time. **Day**: a local
   calendar date.
+- **Training week**: a week with at least one logged entry.
+- **Streak**: a run of training weeks in a row, counted in weeks.
 
 ## R1 — Logging a workout is easy
 
@@ -48,7 +62,8 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
 
 ## R2 — Logging earns XP
 
-- **R2.1** Each logged entry awards `20 + 5 × sets` XP at once.
+- **R2.1** Each logged entry awards `20 + 5 × sets` XP at once (plus the
+  comeback bonus of R12.5 when it applies).
 - **R2.2** Every 100 XP is one level from XP: `xpLevels = floor(totalXP / 100)`.
 - **R2.3** The UI shows total XP, the current level, and progress toward the next
   XP level.
@@ -86,14 +101,15 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
 
 ## R6 — Every log feels like a rush
 
-- **R6.1** *(changed in round 3)* Every change that earns something produces
-  feedback events in this order: an XP event (`+N XP`) when XP was earned; a PB
-  event when the entry is a personal best; a goal event for each goal newly
+- **R6.1** *(changed in round 4)* Every change that earns something produces
+  feedback events in this order: an XP event (`+N XP`, including any comeback
+  bonus) when XP was earned; a comeback event when the entry is a comeback
+  (R12.6); a PB event when the entry is a personal best; a goal event for each goal newly
   reached; a level-up event with the new level when the level went up. Logging
   an entry always gives an XP event. Weigh-ins and habit check-ins can produce
   goal and level-up events.
 - **R6.2** The UI shows them the instant the button is pressed: a floating XP
-  number, a PB or goal alert, and a full level-up moment. Motion is reduced when
+  number, a comeback, PB, or goal alert, and a full level-up moment. Motion is reduced when
   the system asks for reduced motion.
 
 ## R7 — Adding a workout stays simple
@@ -113,9 +129,9 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
   weigh-in.
 - **R8.3** Several profiles can exist; a switcher picks the active one. Entries,
   weigh-ins, goals, XP, level, and records belong to one profile and never mix.
-- **R8.4** *(changed in round 3)* The profile page shows a stats summary: level,
-  total XP, entries logged, total sets, current body weight, goals reached, and
-  records.
+- **R8.4** *(changed in round 4)* The profile page shows a stats summary: level,
+  total XP, entries logged, total sets, current body weight, goals reached,
+  current and best streak (R12.1), and records.
 - **R8.5** A profile can be deleted after confirmation, with all its data. The
   app then switches to another profile, or asks to create one if none remain.
 
@@ -179,6 +195,38 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
   data that reached it, removes that level.
 - **R11.9** A free-text goals note (up to 140 characters) can be edited in the
   goals section.
+
+## R12 — Tough love when a streak breaks *(new)*
+
+- **R12.1** The *current streak* is the number of training weeks in a row that
+  ends this week, or ends last week if this week has no entry yet (this week
+  isn't over, so the streak is still alive). Otherwise it is 0. The *best
+  streak* is the longest run of training weeks ever. Both are derived from
+  entries, so deleting an entry recalculates them.
+- **R12.2** A streak is *broken* when the most recent training week is two or
+  more weeks before this week (so at least one whole week with no entry has
+  ended) and the run ending in that week was at least 2 weeks long. That run's
+  length is the *lost streak*. A run of 1 week followed by a gap is not a broken
+  streak. The broken state lasts until the next entry is logged.
+- **R12.3** While a streak is broken, the log page shows a tough-love banner
+  above the form: a heading, a message that names the lost streak, and a
+  challenge: the first lift back earns +50 XP, then beat the lost streak. The
+  message is chosen from a fixed list by the lost streak's length, so the same
+  break always shows the same message. The banner adds no buttons (R7.1).
+- **R12.4** Tough love, not insults: every banner and comeback message
+  challenges the user to act (log a lift, come back, beat the old streak) and
+  never insults or degrades them. No message calls the user names or uses
+  shaming words such as lazy, weak, pathetic, loser, quitter, failure, soft,
+  excuse-maker, or disappointing.
+- **R12.5** A *comeback entry* is an entry logged two or more weeks after the
+  previous entry's week, when the run ending in the previous entry's week was at
+  least 2 weeks long. It earns a flat +50 XP bonus on top of R2.1. The bonus is
+  derived by replaying entries, so deleting entries recalculates it (if the
+  comeback entry is deleted, the next entry in its place becomes the comeback).
+- **R12.6** A comeback entry produces a comeback event (R6.1) with the lost
+  streak and the bonus, e.g. "Comeback: +50 bonus XP. You held 4 weeks before.
+  Now beat it." The UI shows it as an alert.
+- **R12.7** The status bar shows the current streak, e.g. "Streak: 3 weeks".
 
 ## Non-functional
 
