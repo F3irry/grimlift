@@ -15,18 +15,33 @@ export const AREA_LABELS = {
 export const EQUIPMENT = ['bodyweight', 'dumbbells', 'gym'];
 export const EQUIPMENT_LABELS = { bodyweight: 'bodyweight only', dumbbells: 'dumbbells', gym: 'a full gym' };
 export const EXPERIENCE = ['beginner', 'intermediate', 'advanced'];
-export const DEFAULT_LIMITATIONS = Object.freeze({ areas: [], equipment: 'gym', experience: 'beginner' });
+/** R13.1 / R14.1: a fixed diet pick-list; only meals (R14) use it. */
+export const DIETS = ['vegetarian', 'vegan', 'noDairy', 'noNuts', 'noGluten', 'noPork'];
+export const DIET_LABELS = {
+  vegetarian: 'vegetarian',
+  vegan: 'vegan',
+  noDairy: 'no dairy',
+  noNuts: 'no nuts',
+  noGluten: 'no gluten',
+  noPork: 'no pork',
+};
+export const DEFAULT_LIMITATIONS = Object.freeze({ areas: [], equipment: 'gym', experience: 'beginner', diet: [] });
 
-const strip = ({ areas, equipment, experience }) => ({ areas: [...areas], equipment, experience });
+const strip = ({ areas, equipment, experience, diet }) => ({ areas: [...areas], equipment, experience, diet: [...diet] });
+const asList = (v) => (v == null ? [] : [].concat(v));
 
-/** R13.1: validate raw input. `areas` may be an array or a single string. */
+/** R13.1: validate raw input. `areas` and `diet` may be arrays, single strings, or missing. */
 export function validateLimitations(input = {}) {
-  const raw = input.areas == null ? [] : [].concat(input.areas);
-  if (raw.some((a) => !AREAS.includes(a))) return { ok: false, error: 'Pick body areas from the list.' };
+  const rawAreas = asList(input.areas);
+  const rawDiet = asList(input.diet);
+  if (rawAreas.some((a) => !AREAS.includes(a))) return { ok: false, error: 'Pick body areas from the list.' };
   if (!EQUIPMENT.includes(input.equipment)) return { ok: false, error: 'Pick the equipment you have.' };
   if (!EXPERIENCE.includes(input.experience)) return { ok: false, error: 'Pick your experience level.' };
-  const areas = AREAS.filter((a) => raw.includes(a)); // fixed order, no duplicates
-  return { ok: true, limitations: { areas, equipment: input.equipment, experience: input.experience } };
+  if (rawDiet.some((d) => !DIETS.includes(d))) return { ok: false, error: 'Pick diet options from the list.' };
+  // Fixed order, no duplicates.
+  const areas = AREAS.filter((a) => rawAreas.includes(a));
+  const diet = DIETS.filter((d) => rawDiet.includes(d));
+  return { ok: true, limitations: { areas, equipment: input.equipment, experience: input.experience, diet } };
 }
 
 /** R13.1: save limitations; a save in the same week as the latest record replaces it. */

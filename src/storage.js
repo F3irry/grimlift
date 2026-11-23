@@ -3,12 +3,14 @@ import { createApp } from './logic/profiles.js';
 import { UNITS } from './logic/units.js';
 import { newWeighIn } from './logic/bodyweight.js';
 import { MAX_NOTE } from './logic/goals.js';
-import { AREAS, EQUIPMENT, EXPERIENCE } from './logic/limitations.js';
+import { AREAS, EQUIPMENT, EXPERIENCE, DIETS } from './logic/limitations.js';
 
-export const STORAGE_KEY = 'grimlift:v4';
-/** R4.6: round-3/4 key, migrated on load when there is no v4 data. */
+export const STORAGE_KEY = 'grimlift:v5';
+/** R4.7: round-5 key, migrated on load when there is no v5 data. */
+export const V4_KEY = 'grimlift:v4';
+/** R4.6: round-3/4 key, migrated on load when there is no v5 or v4 data. */
 export const V3_KEY = 'grimlift:v3';
-/** R4.5: round-2 key, migrated on load when there is neither v4 nor v3 data. */
+/** R4.5: round-2 key, migrated on load when there is no v5, v4, or v3 data. */
 export const V2_KEY = 'grimlift:v2';
 /** R4.4: round-1 key. It is never read. */
 export const LEGACY_KEY = 'grimlift:v1';
@@ -50,14 +52,18 @@ function isGoal(g) {
   }
 }
 
-const isLimitation = (l) =>
+const isPickList = (v, allowed) =>
+  Array.isArray(v) && v.every((x) => allowed.includes(x)) && new Set(v).size === v.length;
+
+/** A round-5 (v4) limitations record: no diet yet. */
+const isV4Limitation = (l) =>
   isObj(l) &&
   isStr(l.at) &&
-  Array.isArray(l.areas) &&
-  l.areas.every((a) => AREAS.includes(a)) &&
-  new Set(l.areas).size === l.areas.length &&
+  isPickList(l.areas, AREAS) &&
   EQUIPMENT.includes(l.equipment) &&
   EXPERIENCE.includes(l.experience);
+
+const isLimitation = (l) => isV4Limitation(l) && isPickList(l.diet, DIETS);
 
 const isV3Profile = (p) =>
   isObj(p) &&
@@ -75,11 +81,25 @@ const isV3Profile = (p) =>
 const hasValidActive = (a) =>
   a.activeProfileId === null || a.profiles.some((p) => p.id === a.activeProfileId);
 
+const isV4Profile = (p) => isV3Profile(p) && Array.isArray(p.limitations) && p.limitations.every(isV4Limitation);
 const isProfile = (p) => isV3Profile(p) && Array.isArray(p.limitations) && p.limitations.every(isLimitation);
 
-/** R4.3: accept only data shaped like a v4 app. */
+/** R4.3: accept only data shaped like a v5 app. */
 export function isValidApp(a) {
-  return isObj(a) && a.version === 4 && Array.isArray(a.profiles) && a.profiles.every(isProfile) && hasValidActive(a);
+  return isObj(a) && a.version === 5 && Array.isArray(a.profiles) && a.profiles.every(isProfile) && hasValidActive(a);
+}
+
+function isValidV4(a) {
+  return isObj(a) && a.version === 4 && Array.isArray(a.profiles) && a.profiles.every(isV4Profile) && hasValidActive(a);
+}
+
+/** R4.7: turn round-5 data into round-6 data: every limitations record gets an empty diet. */
+export function migrateV4(v4) {
+  return {
+    ...v4,
+    version: 5,
+    profiles: v4.profiles.map((p) => ({ ...p, limitations: p.limitations.map((l) => ({ ...l, diet: [] })) })),
+  };
 }
 
 function isValidV3(a) {
@@ -124,21 +144,18 @@ function readJson(storage, key) {
   return raw == null ? undefined : JSON.parse(raw);
 }
 
-/** R4.2, R4.3, R4.5, R4.6 */
+/** R4.2, R4.3, R4.5, R4.6, R4.7. Each older key is used only when every newer key is missing. */
 export function loadApp(storage, now = new Date()) {
+  const checked = (app) => (app && isValidApp(app) ? app : createApp());
   try {
-    const v4 = readJson(storage, STORAGE_KEY);
-    if (v4 !== undefined) return isValidApp(v4) ? v4 : createApp();
+    const v5 = readJson(storage, STORAGE_KEY);
+    if (v5 !== undefined) return isValidApp(v5) ? v5 : createApp();
+    const v4 = readJson(storage, V4_KEY);
+    if (v4 !== undefined) return checked(isValidV4(v4) && migrateV4(v4));
     const v3 = readJson(storage, V3_KEY);
-    if (v3 !== undefined) {
-      const migrated = isValidV3(v3) ? migrateV3(v3) : null;
-      return migrated && isValidApp(migrated) ? migrated : createApp();
-    }
+    if (v3 !== undefined) return checked(isValidV3(v3) && migrateV4(migrateV3(v3)));
     const v2 = readJson(storage, V2_KEY);
-    if (v2 !== undefined && isValidV2(v2)) {
-      const migrated = migrateV3(migrateV2(v2, now));
-      if (isValidApp(migrated)) return migrated;
-    }
+    if (v2 !== undefined && isValidV2(v2)) return checked(migrateV4(migrateV3(migrateV2(v2, now))));
     return createApp();
   } catch {
     return createApp();

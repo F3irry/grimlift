@@ -9,7 +9,7 @@ export { profileLevel };
 
 /** R8.1: an app with no profiles. */
 export function createApp() {
-  return { version: 4, activeProfileId: null, profiles: [] };
+  return { version: 5, activeProfileId: null, profiles: [] };
 }
 
 export function activeProfile(app) {
