@@ -90,7 +90,7 @@ export const TOUGH_LOVE_MESSAGES = [
   (n) => `${n} weeks in a row, then the bar went quiet. You built that streak once, so you know exactly what it takes. Get back under the bar.`,
   (n) => `Your streak of ${n} weeks is over. Streaks end; your training doesn't have to. Show up today and start the next one.`,
   (n) => `The streak broke after ${n} weeks. The strength you built is still there. Come back and prove it.`,
-  (n) => `${n} weeks of showing up, then a week off the books. That's history now. What you do this week is what counts. Log a lift.`,
+  (n) => `${n} weeks of showing up, then you stopped. That's history now. What you do this week is what counts. Log a lift.`,
 ];
 
 /** R12.3: the banner for a broken streak of `lostWeeks` weeks. */
