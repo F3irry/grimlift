@@ -11,3 +11,16 @@ easy to stop showing up.
 - R2: Completing a workout earns XP, so progress feels like leveling up in a video game.
 - R3: The user levels up when they hit a new personal best on an exercise.
 - R4: Logged workouts, XP, and level are still there after closing and reopening the app.
+
+## Round 2 requirements (written after the round, not before it)
+- R1 changed: a lift now takes exercise, sets, reps, weight, and kg or lb.
+- R5: Readable font, gothic only on headings, text at least 16px.
+- R6: Every logged set gives instant feedback (XP pop, personal-best alert, level-up).
+- R7: Adding a lift stays one short form and one button.
+- R8: Profiles, each with its own name, unit, body weight, goal, and history.
+
+## Round 3 requirements (written after the round, not before it)
+- R9: I can edit my account info (profile name and preferred unit).
+- R10: I can edit my personal info, like my body weight, anytime.
+- R8 changed: the single goal field is replaced by a fuller fitness goals section.
+- R11: The goals section lets me pick what I'm going for, set a target, and see how close I am.
