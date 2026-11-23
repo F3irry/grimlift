@@ -30,3 +30,6 @@ easy to stop showing up.
 
 ## Round 5 requirements
 - R13: The app suggests exercises and challenges based on the user's goals and limitations, pushing them in healthy ways.
+
+## Round 6 requirements
+- R14: Based on the user's goals, the app suggests meal items that help them reach those goals, while respecting their limitations and stating it is not medical advice.
