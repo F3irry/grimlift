@@ -290,8 +290,12 @@ Out of scope: meal tracking, passwords, sync between devices, medical advice.
   exercises (one when the profile has no goals: a balanced starter plan). They
   are ordered: exercises of active lift goals first, then exercises the profile
   has logged, then catalog order. A lift goal is *active* while it isn't
-  reached. If no exercise of a body part is allowed, the page says that nothing
-  there fits the limitations, and to rest that area or ask a professional.
+  reached. A suggestion uses the name the user typed when the exercise comes
+  from a lift goal (the goal's name) or from the log (the first typed name,
+  R1.3), so logging it counts toward that goal and record; otherwise it uses
+  the catalog name. If no exercise of a body part is allowed, the page says that
+  nothing there fits the limitations, and to rest that area or ask a
+  professional.
 - **R13.5** *How much.* Each suggestion shows sets × reps. Sets: 2 for
   beginners, 3 for intermediate, 4 for advanced. Reps: the target reps for an
   active lift goal's exercise; "20–40 s" for a timed hold; otherwise "12–15"

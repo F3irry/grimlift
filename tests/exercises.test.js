@@ -90,7 +90,7 @@ describe('R13.4 suggestions by body part', () => {
     let p = liftGoal(newProfile(), 'Leg Press');
     expect(names('legs', p)).toEqual(['Leg Press', 'Back Squat']);
     p = lift(p, ['goblet squat', 3, 8, 20], at(23, 10)).profile;
-    expect(names('legs', p)).toEqual(['Leg Press', 'Goblet Squat']);
+    expect(names('legs', p)).toEqual(['Leg Press', 'goblet squat']); // as typed
   });
 
   it('R13.4: a reached lift goal no longer moves its exercise to the front', () => {
@@ -99,6 +99,15 @@ describe('R13.4 suggestions by body part', () => {
     p = lift(p, ['Leg Press', 3, 10, 40], at(23, 10)).profile;
     p = lift(p, ['Lying Leg Curl', 3, 10, 40], at(23, 11)).profile; // reaches the goal
     expect(names('legs', p)).toEqual(['Leg Press', 'Lying Leg Curl']); // logged order now
+  });
+
+  it('R13.4: goal and logged exercises keep the name the user typed', () => {
+    let p = liftGoal(newProfile(), 'bench press');
+    p = lift(p, ['Lat pulldown', 3, 10, 40], at(23, 10)).profile;
+    p = lift(p, ['LAT PULLDOWN', 3, 10, 45], at(23, 11)).profile;
+    expect(names('chest', p)[0]).toBe('bench press');
+    expect(names('back', p)[0]).toBe('Lat pulldown');
+    expect(names('legs', p)[0]).toBe('Back Squat');
   });
 
   it('R13.4: suggestions respect equipment and protected areas', () => {

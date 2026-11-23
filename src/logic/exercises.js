@@ -103,15 +103,23 @@ export function prescription(exercise, profile, limits = currentLimitations(prof
 export function suggestions(profile) {
   const limits = currentLimitations(profile);
   const perPart = profile.goals.length ? 2 : 1;
-  const goalExercises = activeGoals(profile, 'lift').map((g) => findExercise(g.exercise)).filter(Boolean);
-  const logged = profile.entries.map((e) => findExercise(e.exercise)).filter(Boolean);
+  // Catalog exercise → the name the user typed for it (goal first, then the log), so
+  // logging a suggestion counts toward the same goal and record.
+  const typed = new Map();
+  const note = (name) => {
+    const e = findExercise(name);
+    if (e && !typed.has(e)) typed.set(e, name);
+    return e;
+  };
+  const goalExercises = activeGoals(profile, 'lift').map((g) => note(g.exercise)).filter(Boolean);
+  const logged = profile.entries.map((e) => note(e.exercise)).filter(Boolean);
   const ranked = [...new Set([...goalExercises, ...logged, ...CATALOG])];
   return BODY_PARTS.map((bodyPart) => {
     const picks = ranked.filter((e) => e.bodyPart === bodyPart && isAllowed(e, limits)).slice(0, perPart);
     return {
       bodyPart,
       label: BODY_PART_LABELS[bodyPart],
-      items: picks.map((e) => ({ name: e.name, prescription: prescription(e, profile, limits).text })),
+      items: picks.map((e) => ({ name: typed.get(e) ?? e.name, prescription: prescription(e, profile, limits).text })),
       message: picks.length
         ? null
         : `Nothing for ${bodyPart} fits your limitations right now. Rest that area, or ask a professional what's safe for you.`,
