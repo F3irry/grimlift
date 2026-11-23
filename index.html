@@ -17,6 +17,7 @@
         <a href="#/log" class="brand"><h1>Grimlift</h1></a>
         <nav id="nav" class="nav" aria-label="Pages">
           <a href="#/log" data-route="log">Log</a>
+          <a href="#/train" data-route="train">Train</a>
           <a href="#/profile" data-route="profile">Profile</a>
           <label class="switcher">
             <span class="sr-only">Active profile</span>
@@ -90,6 +91,23 @@
           <p id="recent-empty" class="empty">Nothing logged yet. Your first lift sets the bar.</p>
         </section>
 
+        <section id="train-page" class="page" hidden>
+          <div class="panel">
+            <h2>This week's challenges</h2>
+            <p class="lede">Set from your goals and limitations on Monday, so they don't move mid-week. Each one you finish is worth +30 XP.</p>
+            <ul id="challenge-list" class="challenges"></ul>
+            <div id="train-warnings" class="train-warnings" role="status"></div>
+          </div>
+          <div class="panel">
+            <h2>What to train</h2>
+            <p id="train-goal-prompt" class="lede" hidden>No goals yet, so here's a balanced starter plan: one move for each body part. <a href="#/profile">Add a goal</a> to get suggestions built around it.</p>
+            <p id="train-limits" class="train-limits"></p>
+            <div id="train-blocked" class="train-notes"></div>
+            <div id="suggestion-list" class="suggestions"></div>
+            <p id="train-safety" class="safety">These suggestions are general, not medical advice. If something hurts, stop and ask a professional.</p>
+          </div>
+        </section>
+
         <section id="profile-page" class="page" hidden>
           <div class="panel">
             <h2 id="profile-title">Profile</h2>
@@ -159,6 +177,38 @@
               <button type="submit" class="btn">Save note</button>
             </form>
             <p id="note-msg" class="error" role="status"></p>
+          </div>
+
+          <div class="panel" id="limits-panel">
+            <h3>Limitations</h3>
+            <p class="lede">The Train page only suggests what fits these. Change them any time.</p>
+            <form id="limits-form" class="limits-form" autocomplete="off" novalidate>
+              <fieldset class="areas">
+                <legend>Body areas to protect</legend>
+                <label class="check"><input type="checkbox" name="areas" value="knees" /> Knees</label>
+                <label class="check"><input type="checkbox" name="areas" value="hips" /> Hips</label>
+                <label class="check"><input type="checkbox" name="areas" value="lowerBack" /> Lower back</label>
+                <label class="check"><input type="checkbox" name="areas" value="shoulders" /> Shoulders</label>
+                <label class="check"><input type="checkbox" name="areas" value="elbows" /> Elbows</label>
+                <label class="check"><input type="checkbox" name="areas" value="wrists" /> Wrists</label>
+              </fieldset>
+              <label>Equipment I have
+                <select name="equipment">
+                  <option value="bodyweight">Bodyweight only</option>
+                  <option value="dumbbells">Dumbbells</option>
+                  <option value="gym">Full gym</option>
+                </select>
+              </label>
+              <label>Experience
+                <select name="experience">
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </label>
+              <button type="submit" class="btn">Save limitations</button>
+            </form>
+            <p id="limits-msg" class="error" role="status"></p>
           </div>
 
           <div class="columns">

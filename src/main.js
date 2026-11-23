@@ -15,6 +15,9 @@ import { addWeighIn, deleteWeighIn, weighInHistory } from './logic/bodyweight.js
 import { addGoal, deleteGoal, goalStatus, setGoalNote, toggleHabitDay, GOAL_GROUPS } from './logic/goals.js';
 import { dayKey, weekDays, parseDayKey } from './logic/dates.js';
 import { toughLove } from './logic/streaks.js';
+import { currentChallenges, paceWarnings, CHALLENGE_XP } from './logic/challenges.js';
+import { suggestions, blockedGoals } from './logic/exercises.js';
+import { setLimitations, currentLimitations, AREA_LABELS, EQUIPMENT_LABELS } from './logic/limitations.js';
 import { loadApp, saveApp } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
@@ -37,10 +40,10 @@ function commit(next) {
   render();
 }
 
-/** Save a changed profile and play any rewards it earned (R6). */
-function commitProfile(before, after, result = progressChange(before, after)) {
+/** Save a changed profile and play any rewards it earned (R6). `anchor` is where the XP pops. */
+function commitProfile(before, after, result = progressChange(before, after), anchor = $('log-btn')) {
   commit(replaceProfile(app, after));
-  playFeedback(feedbackFor(result));
+  playFeedback(feedbackFor(result), anchor);
 }
 
 function setMsg(id, ok, text) {
@@ -53,7 +56,20 @@ function setMsg(id, ok, text) {
 function route() {
   const hash = location.hash.replace(/^#\/?/, '');
   if (!activeProfile(app) || hash === 'new') return 'new';
-  return hash === 'profile' ? 'profile' : 'log';
+  if (hash === 'profile' || hash === 'train') return hash;
+  return 'log';
+}
+
+/** R13.13: "Log it" links use #/log/<exercise>; take the name and tidy the URL. */
+function takePrefill() {
+  const m = location.hash.match(/^#\/log\/(.+)$/);
+  if (!m) return null;
+  history.replaceState(null, '', '#/log');
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return null;
+  }
 }
 
 // ---------- rendering ----------
@@ -155,7 +171,7 @@ function habitDays(goal, now) {
     box.addEventListener('change', () => {
       const before = activeProfile(app);
       const r = toggleHabitDay(before, goal.id, day, new Date());
-      if (r.ok) commitProfile(before, r.profile);
+      if (r.ok) commitProfile(before, r.profile, undefined, label);
       else render();
     });
     label.append(box, el('span', null, name.slice(0, 2)));
@@ -258,17 +274,80 @@ function renderProfile(profile, stats, switched) {
     account.elements.name.value = profile.name;
     account.elements.unit.value = profile.unit;
   }
+  if (switched || !$('limits-form').contains(document.activeElement)) fillLimitsForm(profile);
   const note = $('note-form');
   if (switched || !note.contains(document.activeElement)) note.elements.goalNote.value = profile.goalNote;
   if (switched) {
     $('goal-form').reset();
     $('goal-form').elements.unit.value = profile.unit;
     showGoalFields();
-    for (const id of ['goal-error', 'note-msg', 'account-msg', 'weigh-msg']) $(id).textContent = '';
+    for (const id of ['goal-error', 'note-msg', 'account-msg', 'weigh-msg', 'limits-msg']) $(id).textContent = '';
   }
 }
 
+// ---------- R13 train page ----------
+function challengeItem(c) {
+  const li = el('li', `challenge${c.done ? ' done' : ''}`);
+  const mark = el('span', 'mark');
+  mark.setAttribute('aria-hidden', 'true');
+  mark.append(el('span', null, '✓'));
+  li.append(
+    mark,
+    el('span', 'c-title', c.title),
+    el('span', 'c-xp', c.done ? `Done · +${CHALLENGE_XP} XP` : `+${CHALLENGE_XP} XP`),
+    el('span', 'c-detail', c.detail),
+  );
+  return li;
+}
+
+function limitsSummary(profile) {
+  const l = currentLimitations(profile);
+  const areas = l.areas.length ? l.areas.map((a) => AREA_LABELS[a]).join(', ') : 'no areas';
+  const link = el('a', null, 'Change');
+  link.href = '#/profile';
+  $('train-limits').replaceChildren(`Fitted to ${EQUIPMENT_LABELS[l.equipment]}, ${l.experience} level, protecting ${areas}. `, link);
+}
+
+function suggestionCard(part) {
+  const card = el('div', 'part');
+  card.append(el('h3', null, part.label));
+  if (part.message) {
+    card.append(el('p', 'none', part.message));
+    return card;
+  }
+  const ul = el('ul');
+  for (const item of part.items) {
+    const li = el('li');
+    const log = el('a', 'ex-log', 'Log it');
+    log.href = `#/log/${encodeURIComponent(item.name)}`;
+    log.setAttribute('aria-label', `Log ${item.name}`);
+    li.append(el('span', 'ex-name', item.name), el('span', 'ex-dose num', item.prescription), log);
+    ul.append(li);
+  }
+  card.append(ul);
+  return card;
+}
+
+function renderTrain(profile) {
+  const now = new Date();
+  $('challenge-list').replaceChildren(...currentChallenges(profile, now).map(challengeItem));
+  $('train-warnings').replaceChildren(...paceWarnings(profile).map((w) => el('p', 'note warn', w.text)));
+  $('train-goal-prompt').hidden = profile.goals.length > 0;
+  limitsSummary(profile);
+  $('train-blocked').replaceChildren(...blockedGoals(profile).map((n) => el('p', 'note', n.text)));
+  $('suggestion-list').replaceChildren(...suggestions(profile).map(suggestionCard));
+}
+
+function fillLimitsForm(profile) {
+  const form = $('limits-form');
+  const l = currentLimitations(profile);
+  form.querySelectorAll('input[name="areas"]').forEach((box) => { box.checked = l.areas.includes(box.value); });
+  form.elements.equipment.value = l.equipment;
+  form.elements.experience.value = l.experience;
+}
+
 function render() {
+  const prefill = takePrefill();
   const page = route();
   const profile = activeProfile(app);
   renderSwitcher(profile);
@@ -276,6 +355,7 @@ function render() {
   $('onboard-page').hidden = page !== 'new';
   $('log-page').hidden = page !== 'log';
   $('profile-page').hidden = page !== 'profile';
+  $('train-page').hidden = page !== 'train';
   $('status').hidden = !profile;
   $('nav').querySelectorAll('a').forEach((a) => {
     a.classList.toggle('active', a.dataset.route === page);
@@ -288,7 +368,12 @@ function render() {
     renderStatus(stats);
     renderStreakBanner(stats);
     renderLog(profile, switched);
+    renderTrain(profile);
     renderProfile(profile, stats, switched);
+    if (prefill && page === 'log') {
+      $('exercise').value = prefill;
+      $('sets').focus();
+    }
   }
   lastProfileId = profile ? profile.id : null;
 }
@@ -347,6 +432,14 @@ function showComebackToast(event) {
   setTimeout(() => toast.remove(), 6000);
 }
 
+/** R13.12: the challenge alert. */
+function showChallengeToast(event) {
+  const toast = el('div', 'toast challenge');
+  toast.append(el('strong', null, 'Challenge done'), el('span', null, `${event.title} · +${event.xp} XP`));
+  $('toasts').append(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
 function showGoalToast(event) {
   const toast = el('div', 'toast');
   toast.append(el('strong', null, 'Goal reached'), el('span', null, `${event.title} · +1 level`));
@@ -367,15 +460,16 @@ function hideLevelUp() {
   $('ascend').hidden = true;
 }
 
-function playFeedback(events) {
+function playFeedback(events, anchor = $('log-btn')) {
   if (!events.length) return;
   retrigger($('xp-bar'), 'flash');
   for (const ev of events) {
     if (ev.type === 'xp') {
-      retrigger($('log-btn'), 'struck');
-      popXp(ev.text, $('log-btn'));
+      if (anchor === $('log-btn')) retrigger(anchor, 'struck');
+      popXp(ev.text, anchor);
     }
     if (ev.type === 'comeback') showComebackToast(ev);
+    if (ev.type === 'challenge') showChallengeToast(ev);
     if (ev.type === 'pb') showPb(ev);
     if (ev.type === 'goal') showGoalToast(ev);
     if (ev.type === 'level') setTimeout(() => showLevelUp(ev), reducedMotion() ? 0 : 450);
@@ -425,7 +519,7 @@ $('weigh-form').addEventListener('submit', (e) => {
   setMsg('weigh-msg', r.ok, r.ok ? 'Saved.' : r.error);
   if (!r.ok) return;
   e.target.reset();
-  commitProfile(before, r.profile);
+  commitProfile(before, r.profile, undefined, e.submitter ?? e.target.querySelector('button'));
 });
 
 // R11: goals
@@ -446,6 +540,19 @@ $('goal-form').addEventListener('submit', (e) => {
   e.target.elements.type.value = type;
   e.target.elements.unit.value = r.profile.unit;
   commit(replaceProfile(app, r.profile));
+});
+
+// R13.1: limitations
+$('limits-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const before = activeProfile(app);
+  const areas = [...form.querySelectorAll('input[name="areas"]:checked')].map((b) => b.value);
+  const r = setLimitations(before, { areas, equipment: form.elements.equipment.value, experience: form.elements.experience.value });
+  setMsg('limits-msg', r.ok, r.ok ? 'Saved. The Train page now fits these.' : r.error);
+  if (!r.ok) return;
+  document.activeElement?.blur();
+  commitProfile(before, r.profile, undefined, e.submitter ?? form.querySelector('button'));
 });
 
 $('note-form').addEventListener('submit', (e) => {
