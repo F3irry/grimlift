@@ -36,7 +36,8 @@ user's problem and `spec.md` for the numbered rules (R1.1, R2.1, …).
 
 A profile stores only its details and raw records: `entries`, `weighIns`,
 `goals` (with habit `checks`), and `goalNote`. Totals (XP, PB levels, goal
-levels, records, goal progress) are always recomputed from those, so deleting
+levels, records, goal progress, streaks, the comeback bonus) are always
+recomputed from those, so deleting
 anything stays consistent. Never store derived totals. The only stored values
 captured at a point in time are a goal's `baselineKg` (lift) and `startKg`
 (body weight), because they mean "where you were when you set the goal".
@@ -65,13 +66,35 @@ old data or start fresh. Don't decide that yourself.
   Requirements often conflict with earlier rounds (e.g. round 2's one-button rule
   removed round 1's Complete step); point that out instead of guessing.
 - Order of commits per round: spec + CLAUDE.md, then tests (failing), then
-  implementation, then UI, then README. Push to `origin/master` when done.
+  implementation, then UI, then decision records, then README. Push to
+  `origin/master` when done.
   Commit straight to `master`; the user agreed to this.
 - Don't commit handoff files (`handoff-*.md`) or CLAUDE.md changes the user
   asked to review first.
 - `.gitignore` must keep excluding `node_modules/` and `*.jsonl`.
-- Before saying the UI works, run it and look at it (see the handoff notes for
-  the headless-Edge check). Stop any dev server you started.
+- Each round, write at least one decision record in `docs/decisions/` for a
+  decision that had real alternatives: a Y-statement ("In the context of …,
+  facing …, we decided for … and neglected …, to achieve …, accepting …"),
+  saying who decided (the user or Claude). Files are numbered `0001-…md`,
+  `0002-…md`, …; never renumber or edit an accepted record. Supersede it with
+  a new one instead.
+- At the end of a round, list every decision you made that the user didn't ask
+  for.
+- Before saying the UI works, run it and look at it (see below). Stop any dev
+  server you started.
+
+## Checking the UI in a browser
+
+- In a scratchpad folder outside the repo: `npm init -y`, `npm i puppeteer-core`.
+  Don't add puppeteer to the project's dependencies unless the user agrees.
+- Start `npx vite --port 5179 --strictPort` in the repo (in the background).
+- Launch with `executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'`,
+  `headless: true`. Collect `pageerror` events and take screenshots.
+- To seed data: open the app, `localStorage.setItem('grimlift:v3', …)`, then
+  call `page.reload()`. Navigating to `#/log` from `/` only changes the hash, so
+  the app keeps its in-memory empty state and the seed is ignored.
+- Stop the server with PowerShell:
+  `Get-NetTCPConnection -LocalPort 5179 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`.
 
 ## Constraints from the UI tests (`tests/ui.test.js`)
 
@@ -79,6 +102,10 @@ old data or start fresh. Don't decide that yourself.
   whose selectors end in `h1`, `h2`, or `h3` (R5.1).
 - Every `font-size` must be `px`, `rem`, or `clamp(min, …)` and at least 16px /
   1rem. `em`, `%`, and keywords make the test fail on purpose (R5.2).
+- `#streak-banner` must stay inside `#log-page`, before the form, with no
+  buttons (R12.3). Any new tough-love or comeback text must pass the R12.4
+  shaming-word test in `tests/streaks.test.js`. Passing it isn't enough: read
+  the message yourself, since the word list only catches obvious insults.
 - `#log-page` in `index.html` must have exactly one `<form>`, exactly one
   `<button>` (the submit), and fields named exercise, sets, reps, weight, unit
   in that order (R7.1). Buttons added by JS at runtime aren't checked, so don't
