@@ -44,11 +44,11 @@ describe('R8 profiles', () => {
     expect(activeProfile(withProfiles('Ash')).name).toBe('Ash');
   });
 
-  it('R8.2: a new profile has kg, no weigh-ins, no goals, an empty note, no entries', () => {
+  it('R8.2: a new profile has kg, no weigh-ins, no goals, an empty note, no entries, no limitations', () => {
     const p = activeProfile(withProfiles('Ash'));
     expect(p).toEqual({
       id: expect.any(String), createdAt: NOW.toISOString(), name: 'Ash', unit: 'kg',
-      entries: [], weighIns: [], goals: [], goalNote: '',
+      entries: [], weighIns: [], goals: [], goalNote: '', limitations: [],
     });
   });
 
@@ -88,8 +88,8 @@ describe('R8 profiles', () => {
     app = switchProfile(app, bryn.id);
     app = log(app, { exercise: 'Squat', weight: 60 });
 
-    const a = profileStats(app.profiles[0]);
-    const b = profileStats(app.profiles[1]);
+    const a = profileStats(app.profiles[0], at(23, 12));
+    const b = profileStats(app.profiles[1], at(23, 12));
     expect(a.entryCount).toBe(2);
     expect(a.level).toBe(2);
     expect(b.entryCount).toBe(1);
@@ -105,12 +105,13 @@ describe('R8 profiles', () => {
     app = log(app, { exercise: 'Squat', sets: 3, weight: 100 });
     app = log(app, { exercise: 'Bench', sets: 2, weight: 135, unit: 'lb' });
     app = updateAccount(app, activeProfile(app).id, { name: 'Ash', unit: 'lb' }).app;
-    const s = profileStats(activeProfile(app));
-    expect(s).toMatchObject({ level: 2, totalXp: 65, entryCount: 2, totalSets: 5, goalsReached: 1, goalCount: 1 });
+    const s = profileStats(activeProfile(app), at(23, 12));
+    // 65 XP from lifts + 30 for the 'Train 1 day' challenge (R2.1, R13.8)
+    expect(s).toMatchObject({ level: 2, totalXp: 95, entryCount: 2, totalSets: 5, goalsReached: 1, goalCount: 1 });
     expect(s.bodyWeight).toBe('198.4 lb');
-    expect(s.xp).toEqual({ current: 65, needed: 100 });
+    expect(s.xp).toEqual({ current: 95, needed: 100 });
     expect(s.records.map((r) => r.display)).toEqual(['135 lb × 5', '220.5 lb × 5']);
-    expect(profileStats(activeProfile(withProfiles('New'))).bodyWeight).toBeNull();
+    expect(profileStats(activeProfile(withProfiles('New')), at(23, 12)).bodyWeight).toBeNull();
   });
 
   it('R8.5: deleting the active profile switches to another', () => {
@@ -160,9 +161,9 @@ describe('R9 account info', () => {
     let app = withProfiles('Ash');
     let p = addWeighIn(activeProfile(app), '100', at(23, 9)).profile;
     app = log(replaceProfile(app, p), { exercise: 'Squat', weight: 100 });
-    const kgView = profileStats(activeProfile(app));
+    const kgView = profileStats(activeProfile(app), at(23, 12));
     app = updateAccount(app, activeProfile(app).id, { name: 'Ash', unit: 'lb' }).app;
-    const lbView = profileStats(activeProfile(app));
+    const lbView = profileStats(activeProfile(app), at(23, 12));
     expect(kgView.bodyWeight).toBe('100 kg');
     expect(lbView.bodyWeight).toBe('220.5 lb');
     expect(lbView.records[0].display).toBe('220.5 lb × 5');
@@ -177,6 +178,7 @@ describe('R3.4 level formula', () => {
     app = replaceProfile(app, p);
     app = log(app, { exercise: 'Squat', weight: 100 });
     app = log(app, { exercise: 'Squat', weight: 110 });
-    expect(profileLevel(activeProfile(app))).toEqual({ totalXp: 50, pbLevels: 1, goalLevels: 1, level: 3 });
+    // 50 XP from lifts + 30 for the 'Train 1 day' challenge (R2.1, R13.8)
+    expect(profileLevel(activeProfile(app), at(23, 12))).toEqual({ totalXp: 80, pbLevels: 1, goalLevels: 1, level: 3 });
   });
 });

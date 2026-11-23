@@ -18,3 +18,6 @@ export function lift(profile, [exercise, sets, reps, weight, unit = 'kg'], now) 
   if (!r.ok) throw new Error(r.error);
   return r;
 }
+
+/** R12.4 / R13.14: words no message may use. A floor, not a guarantee: read new messages yourself. */
+export const SHAMING = /\b(lazy|weak|weakling|pathetic|loser|quit(ter)?|failure|failed|soft|excuses?-?maker|disappoint\w*|worthless|useless|stupid|shame\w*|embarrass\w*|joke|coward)\b/i;

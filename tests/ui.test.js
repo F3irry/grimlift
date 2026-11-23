@@ -96,3 +96,31 @@ describe('R12 streak markup', () => {
     expect(doc.querySelector('#profile-page #st-best-streak')).not.toBeNull();
   });
 });
+
+describe('R13 train page and limitations markup', () => {
+  it('R13.13: the nav has a Train link to the train page', () => {
+    const link = doc.querySelector('#nav a[data-route="train"]');
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('#/train');
+    expect(link.textContent.trim()).toBe('Train');
+  });
+
+  it('R13.13: the train page has challenges, warnings, suggestions, and a safety note', () => {
+    const page = doc.getElementById('train-page');
+    expect(page).not.toBeNull();
+    for (const id of ['challenge-list', 'train-warnings', 'suggestion-list', 'train-goal-prompt']) {
+      expect(page.querySelector(`#${id}`), id).not.toBeNull();
+    }
+    expect(page.querySelector('#train-safety').textContent).toMatch(/professional/i);
+  });
+
+  it('R13.1: the profile page has a limitations form with every area, equipment, and experience', () => {
+    const form = doc.querySelector('#profile-page #limits-form');
+    expect(form).not.toBeNull();
+    const areas = [...form.querySelectorAll('input[type="checkbox"][name="areas"]')].map((b) => b.value);
+    expect(areas).toEqual(['knees', 'hips', 'lowerBack', 'shoulders', 'elbows', 'wrists']);
+    const opts = (name) => [...form.querySelectorAll(`select[name="${name}"] option`)].map((o) => o.value);
+    expect(opts('equipment')).toEqual(['bodyweight', 'dumbbells', 'gym']);
+    expect(opts('experience')).toEqual(['beginner', 'intermediate', 'advanced']);
+  });
+});

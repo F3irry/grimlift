@@ -9,7 +9,7 @@ import {
 } from '../src/logic/streaks.js';
 import { summarize, feedbackFor, deleteEntry, xpForEntry } from '../src/logic/progression.js';
 import { profileStats } from '../src/logic/profiles.js';
-import { at, newProfile, lift } from './helpers.js';
+import { at, newProfile, lift, SHAMING } from './helpers.js';
 
 // Mondays in Nov/Dec 2026: 2, 9, 16, 23, 30 Nov; at(37) is Mon 7 Dec, at(44) is Mon 14 Dec.
 
@@ -94,7 +94,6 @@ describe('R12.2 broken streak', () => {
 });
 
 describe('R12.3 / R12.4 tough-love messages', () => {
-  const SHAMING = /\b(lazy|weak|weakling|pathetic|loser|quit(ter)?|failure|failed|soft|excuses?-?maker|disappoint\w*|worthless|useless|stupid|shame\w*|embarrass\w*|joke|coward)\b/i;
   const CHALLENGE = /\b(log|come back|back|beat|show up|start|get)\b/i;
 
   it('R12.3: the banner names the lost streak and the +50 XP challenge', () => {
