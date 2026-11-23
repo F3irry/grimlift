@@ -26,6 +26,9 @@ user's problem and `spec.md` for the numbered rules (R1.1, R2.1, …).
   - `streaks.js` weekly streaks, broken-streak state, comeback bonus,
     tough-love messages (R12)
   - `profiles.js` creating, editing, switching, deleting profiles; level; stats
+  - `limitations.js` protected areas, equipment, experience; dated history (R13.1)
+  - `exercises.js` built-in exercise catalog, "allowed", suggestions (R13.2–R13.6)
+  - `challenges.js` weekly challenges, challenge XP, pace warning (R13.7–R13.11)
 - `src/storage.js` — `localStorage` load/save; takes a storage object so tests
   can pass a fake.
 - `src/main.js`, `src/style.css`, `index.html` — UI only; keep rules out of here.
@@ -35,8 +38,10 @@ user's problem and `spec.md` for the numbered rules (R1.1, R2.1, …).
 ## Data model
 
 A profile stores only its details and raw records: `entries`, `weighIns`,
-`goals` (with habit `checks`), and `goalNote`. Totals (XP, PB levels, goal
-levels, records, goal progress, streaks, the comeback bonus) are always
+`goals` (with habit `checks`), `goalNote`, and `limitations` (a dated history,
+so past weeks' challenges keep the limitations in force then). Totals (XP, PB
+levels, goal levels, records, goal progress, streaks, the comeback bonus,
+weekly challenges and their XP) are always
 recomputed from those, so deleting
 anything stays consistent. Never store derived totals. The only stored values
 captured at a point in time are a goal's `baselineKg` (lift) and `startKg`
@@ -45,9 +50,9 @@ captured at a point in time are a goal's `baselineKg` (lift) and `startKg`
 Logic that depends on the date takes `now` as a parameter. Tests build dates
 with the local `new Date(y, m, d, h)` constructor so they pass in any timezone.
 
-Saved data lives under the `localStorage` key `grimlift:v3` (v2 is migrated on
-load; v1 is ignored). If the saved shape
-changes, use a new key (`grimlift:v4`) and ask the user whether to migrate the
+Saved data lives under the `localStorage` key `grimlift:v4` (v3 and v2 are
+migrated on load; v1 is ignored). If the saved shape
+changes, use a new key (`grimlift:v5`) and ask the user whether to migrate the
 old data or start fresh. Don't decide that yourself.
 
 ## Rules
@@ -90,7 +95,7 @@ old data or start fresh. Don't decide that yourself.
 - Start `npx vite --port 5179 --strictPort` in the repo (in the background).
 - Launch with `executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'`,
   `headless: true`. Collect `pageerror` events and take screenshots.
-- To seed data: open the app, `localStorage.setItem('grimlift:v3', …)`, then
+- To seed data: open the app, `localStorage.setItem('grimlift:v4', …)`, then
   call `page.reload()`. Navigating to `#/log` from `/` only changes the hash, so
   the app keeps its in-memory empty state and the seed is ignored.
 - Stop the server with PowerShell:

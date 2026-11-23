@@ -1,11 +1,27 @@
-# Grimlift — Specification (Round 4)
+# Grimlift — Specification (Round 5)
 
 Grimlift is a gym tracker with game-style progression. It runs locally in the
 browser, stores everything in `localStorage`, and needs no login or API keys.
 This spec turns the requirements in `problem.md` and later rounds into testable
 rules. Each rule has an ID; tests name the IDs they check.
 
-Out of scope: meal tracking, body-part guidance, passwords, sync between devices.
+Out of scope: meal tracking, passwords, sync between devices, medical advice.
+*(Round 5: body-part guidance is no longer out of scope; R13 adds it.)*
+
+## Round 5 changes at a glance
+
+- Each profile records its limitations: body areas to protect, equipment
+  available, and experience level (R13.1).
+- A new **Train** page suggests exercises for each body part from a built-in
+  catalog, filtered by limitations and ordered by goals (R13.2–R13.6).
+- Each week the app sets up to three challenges from the profile's goals:
+  train a number of days (or rest), weigh in at a healthy pace, and a small step
+  on a lift goal. Each completed challenge earns +30 XP (R13.7–R13.11).
+- Healthy limits: lift steps of at most 2.5–5%, never more than 6 training
+  days, a rest-day challenge after a 7-day week, a body-weight pace limit with a
+  warning, and limitations always win over goals (R13.3, R13.6, R13.8–R13.11).
+- Saved data moves to `grimlift:v4`; round-3/4 data (`grimlift:v3`) is migrated
+  (R4.6).
 
 ## Round 4 changes at a glance
 
@@ -43,6 +59,10 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
   calendar date.
 - **Training week**: a week with at least one logged entry.
 - **Streak**: a run of training weeks in a row, counted in weeks.
+- **Limitations**: the body areas a profile protects, the equipment it has, and
+  its experience level (R13.1).
+- **Challenge**: a small weekly task the app sets from the profile's goals
+  (R13.7).
 
 ## R1 — Logging a workout is easy
 
@@ -62,8 +82,9 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
 
 ## R2 — Logging earns XP
 
-- **R2.1** Each logged entry awards `20 + 5 × sets` XP at once (plus the
-  comeback bonus of R12.5 when it applies).
+- **R2.1** *(changed in round 5)* Each logged entry awards `20 + 5 × sets` XP
+  at once (plus the comeback bonus of R12.5 when it applies). Each completed
+  weekly challenge awards +30 XP (R13.7). Total XP is the sum of both.
 - **R2.2** Every 100 XP is one level from XP: `xpLevels = floor(totalXP / 100)`.
 - **R2.3** The UI shows total XP, the current level, and progress toward the next
   XP level.
@@ -81,9 +102,9 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
 
 ## R4 — Data survives closing the app
 
-- **R4.1** Profiles and everything in them (entries, weigh-ins, goals, habit
-  check-ins), and which profile is active, are saved to `localStorage` after
-  every change.
+- **R4.1** *(changed in round 5)* Profiles and everything in them (entries,
+  weigh-ins, goals, habit check-ins, limitations), and which profile is active,
+  are saved to `localStorage` under the key `grimlift:v4` after every change.
 - **R4.2** On load, saved data is restored exactly.
 - **R4.3** If saved data is missing, unreadable, or the wrong shape, the app
   starts fresh (no profiles) instead of crashing.
@@ -92,7 +113,13 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
   round-3 data (key `grimlift:v3`). Profiles, entries, and the active profile
   are kept. A saved body weight becomes one weigh-in at migration time. The old
   goal text becomes the goals note (R11.9). The goal list starts empty. The v2
-  key is left untouched.
+  key is left untouched. *(Round 5: migrated v2 data then goes through R4.6
+  too, and is used only when there is neither v4 nor v3 data.)*
+- **R4.6** *(new)* Round-3/4 data (key `grimlift:v3`) is migrated when there is
+  no `grimlift:v4` data. Everything is kept; each profile gets an empty
+  limitations history (so it uses the defaults of R13.1). The v3 key is left
+  untouched. If v4 data exists but is unreadable or the wrong shape, the app
+  starts fresh (R4.3) and does not fall back to v3.
 
 ## R5 — Readable type that stays gothic
 
@@ -101,15 +128,16 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
 
 ## R6 — Every log feels like a rush
 
-- **R6.1** *(changed in round 4)* Every change that earns something produces
+- **R6.1** *(changed in round 5)* Every change that earns something produces
   feedback events in this order: an XP event (`+N XP`, including any comeback
-  bonus) when XP was earned; a comeback event when the entry is a comeback
-  (R12.6); a PB event when the entry is a personal best; a goal event for each goal newly
-  reached; a level-up event with the new level when the level went up. Logging
-  an entry always gives an XP event. Weigh-ins and habit check-ins can produce
-  goal and level-up events.
+  and challenge bonus) when XP was earned; a comeback event when the entry is a
+  comeback (R12.6); a challenge event for each weekly challenge newly completed
+  (R13.12); a PB event when the entry is a personal best; a goal event for each
+  goal newly reached; a level-up event with the new level when the level went
+  up. Logging an entry always gives an XP event. Weigh-ins and habit check-ins
+  can produce XP (from a challenge), challenge, goal, and level-up events.
 - **R6.2** The UI shows them the instant the button is pressed: a floating XP
-  number, a comeback, PB, or goal alert, and a full level-up moment. Motion is reduced when
+  number, a comeback, challenge, PB, or goal alert, and a full level-up moment. Motion is reduced when
   the system asks for reduced motion.
 
 ## R7 — Adding a workout stays simple
@@ -122,9 +150,10 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
 ## R8 — Personal profiles
 
 - **R8.1** With no profiles, the app asks the user to create one before logging.
-- **R8.2** *(changed in round 3)* A profile has a name (required, 1–40
+- **R8.2** *(changed in round 5)* A profile has a name (required, 1–40
   characters, unique ignoring case), a preferred unit (`kg`/`lb`, default `kg`),
-  a list of weigh-ins (R10), a list of goals (R11), and a goals note (R11.9).
+  a list of weigh-ins (R10), a list of goals (R11), a goals note (R11.9), and a
+  limitations history (R13.1).
   Creating a profile may include a first body weight, which becomes its first
   weigh-in.
 - **R8.3** Several profiles can exist; a switcher picks the active one. Entries,
@@ -227,6 +256,112 @@ Out of scope: meal tracking, body-part guidance, passwords, sync between devices
   streak and the bonus, e.g. "Comeback: +50 bonus XP. You held 4 weeks before.
   Now beat it." The UI shows it as an alert.
 - **R12.7** The status bar shows the current streak, e.g. "Streak: 3 weeks".
+
+## R13 — Suggestions and challenges from goals and limitations *(new)*
+
+- **R13.1** *Limitations.* The profile page has a limitations section where the
+  user sets, at any time:
+  - **body areas to protect**: any of knees, hips, lower back, shoulders,
+    elbows, wrists (none by default);
+  - **equipment available**: bodyweight only, dumbbells, or full gym (each
+    includes the ones before it; default full gym);
+  - **experience**: beginner, intermediate, or advanced (default beginner).
+
+  Saving stores a dated record. If the latest record was saved this week, it is
+  replaced; otherwise the new record is added. The *current* limitations are the
+  latest record, or the defaults if there is none. The limitations *in force for
+  a week* are the latest record saved before that week ended (defaults if none).
+  An unknown area, equipment, or experience value is rejected with a message,
+  and nothing is saved.
+- **R13.2** *Exercise catalog.* The app has a built-in catalog. Each exercise
+  has a name, one body part (legs, back, chest, shoulders, arms, core), the
+  equipment it needs, the body areas it loads, optional other names, and
+  whether it is a timed hold. Every body part has at least two exercises and at
+  least one bodyweight exercise. A typed exercise name matches a catalog
+  exercise when it equals the exercise's name or one of its other names,
+  ignoring case and repeated spaces (R1.3).
+- **R13.3** *Limitations always win.* A catalog exercise is *allowed* when the
+  profile has its equipment and it loads none of the protected areas. An
+  exercise that isn't allowed is never suggested and never gets a challenge,
+  even when a goal names it. Exercises that aren't in the catalog are treated as
+  allowed, since the app knows nothing about them.
+- **R13.4** *Suggested exercises.* For each body part, in the order legs, back,
+  chest, shoulders, arms, core, the Train page suggests up to two allowed
+  exercises (one when the profile has no goals: a balanced starter plan). They
+  are ordered: exercises of active lift goals first, then exercises the profile
+  has logged, then catalog order. A lift goal is *active* while it isn't
+  reached. If no exercise of a body part is allowed, the page says that nothing
+  there fits the limitations, and to rest that area or ask a professional.
+- **R13.5** *How much.* Each suggestion shows sets × reps. Sets: 2 for
+  beginners, 3 for intermediate, 4 for advanced. Reps: the target reps for an
+  active lift goal's exercise; "20–40 s" for a timed hold; otherwise "12–15"
+  when the profile has an active body-weight goal to lose weight, and "8–12" in
+  all other cases.
+- **R13.6** *Blocked goals.* For each active lift goal whose exercise is in the
+  catalog but not allowed, the Train page says which protected area or missing
+  equipment blocks it and names the first allowed exercise of the same body
+  part (catalog order) as a safer alternative, or says that none fits.
+- **R13.7** *Weekly challenges.* Each week has up to three challenges, taken in
+  this order: one training or rest challenge (R13.8), one body-weight challenge
+  (R13.10) if there is a body-weight goal, then a lift challenge (R13.9) for
+  each lift goal, oldest goal first. A week's challenges are set from the
+  entries and weigh-ins saved *before* the week started, the goals created
+  before the week ends, and the limitations in force for that week, so they
+  don't move while the user logs during the week. Each completed challenge
+  earns +30 XP, once. Challenge XP is derived for every week from the first week
+  with an entry or weigh-in up to this week. Deleting an entry, weigh-in, or
+  goal, or changing this week's limitations, recalculates it. Earlier weeks keep
+  the limitations that were in force then.
+- **R13.8** *Train or rest.* Let *last* be the number of days in the previous
+  week with at least one entry.
+  - If *last* is 7, the challenge is to take a rest day: it is completed once
+    any day of this week has ended with no entry.
+  - Otherwise the challenge is to train *N* days this week, where
+    `N = min(G, max(2, last + 1), 6)` and *G* is the largest days per week of
+    the training goals (R11.4), or 2 if there are none. It is completed when the
+    week has at least *N* days with an entry. So the push is never more than one
+    extra day over last week (after a slow week, starting at 2), never past
+    the goal, and never more than 6 days.
+- **R13.9** *Small lift steps.* A lift goal gets a challenge when it was created
+  before the week ends, was not reached before the week started, and its
+  exercise is allowed. Let *B* be the heaviest weight (kg) logged for the
+  exercise with at least the target reps before the week started.
+  - If *B* is 0: log the exercise for the target reps at a weight you control.
+    Completed by such an entry.
+  - Otherwise the step is 2.5% for beginners and 5% for intermediate and
+    advanced. The challenge weight is `B × (1 + step)` in the goal's unit,
+    rounded *down* to 0.5 kg or 1 lb, and never above the goal's target. If
+    that isn't heavier than *B*, the challenge is one more rep at *B* instead.
+    Completed by an entry with at least the challenge weight (within 0.01 kg)
+    and reps.
+
+  Only entries for that exercise logged this week, after the goal was created,
+  count.
+- **R13.10** *Healthy body-weight pace.* The oldest body-weight goal created
+  before the week ends and not reached before the week started gets a
+  challenge: weigh in this week. Its text gives the healthy pace: at most 1% of
+  body weight a week when losing, 0.5% when gaining, measured from the latest
+  weigh-in before the week started (or the goal's start weight). Any weigh-in
+  this week, saved after the goal was created, completes it. The number on the
+  scale doesn't decide it, so the app never rewards losing or gaining faster.
+- **R13.11** *Pace warning.* For each active body-weight goal, the Train page
+  compares the current weigh-in with the latest weigh-in at least 7 days older.
+  If the average weekly change toward the goal is faster than the pace in
+  R13.10, it shows a warning to slow down, eat enough, and rest. With no
+  weigh-in 7 or more days older, there is no warning.
+- **R13.12** A challenge newly completed this week produces a challenge event
+  (R6.1), e.g. "Challenge done: Train 2 days this week · +30 XP". Its XP is
+  part of the XP event. The UI shows it as an alert.
+- **R13.13** *Train page.* A third page, "Train", shows this week's
+  challenges (each with its +30 XP and whether it's done), any pace warning
+  and blocked-goal notes, and the suggestions by body part with sets × reps.
+  Each suggestion has a "Log it" link that opens the log page with the exercise
+  filled in. With no goals, it invites the user to add one. It says that the
+  suggestions are general, and to stop and ask a professional if something
+  hurts.
+- **R13.14** *Healthy push, not pressure.* Every challenge, warning, and note
+  says what to do and passes the same check as R12.4 (no name-calling or
+  shaming words).
 
 ## Non-functional
 
