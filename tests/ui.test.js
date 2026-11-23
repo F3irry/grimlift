@@ -75,3 +75,24 @@ describe('R7 simple logging form', () => {
     expect([...unit.querySelectorAll('option')].map((o) => o.value)).toEqual(['kg', 'lb']);
   });
 });
+
+describe('R12 streak markup', () => {
+  const page = doc.getElementById('log-page');
+
+  it('R12.3: the log page has a tough-love banner above the form, with no button', () => {
+    const banner = page.querySelector('#streak-banner');
+    expect(banner).not.toBeNull();
+    expect(banner.querySelectorAll('button')).toHaveLength(0);
+    const form = page.querySelector('form');
+    expect(banner.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('R12.7: the status bar has a current-streak line', () => {
+    expect(doc.querySelector('#status #streak')).not.toBeNull();
+  });
+
+  it('R8.4: the profile stats show current and best streak', () => {
+    expect(doc.querySelector('#profile-page #st-streak')).not.toBeNull();
+    expect(doc.querySelector('#profile-page #st-best-streak')).not.toBeNull();
+  });
+});
