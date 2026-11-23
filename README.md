@@ -56,18 +56,28 @@ alerts, and level-ups. Everything runs in your browser and is saved in
   small step on a lift goal (2.5% heavier for beginners, 5% otherwise, or one
   more rep). If your weight is changing faster than that pace, the Train page
   warns you to slow down.
+- **Meals for your goals**: the Fuel page suggests a breakfast, lunch, dinner,
+  and snack from a built-in meal list, picked by what you're going for: high
+  protein for lift goals, filling and lighter for losing weight, energy-dense
+  for gaining, and carbs plus protein to fuel training habits. Each meal says
+  why it fits. Tick your diet on the profile's limitations (vegetarian, vegan,
+  no dairy, no nuts, no gluten, no pork), and nothing it rules out is ever
+  suggested. Meals are suggestions only: no meal log, no calorie counting, no
+  XP.
 - **Keeps your progress**: everything is still there after you close and reopen
   the app.
 - **Readable gothic style**: blackletter headings with an easy-to-read serif
   for everything else, at 16px or larger.
 
-Data from earlier versions of Grimlift (rounds 2–4) is carried over
+Data from earlier versions of Grimlift (rounds 2–5) is carried over
 automatically the first time you open this version.
 
-Suggestions are general, not medical advice. If something hurts, stop and ask a
-professional.
+Exercise and meal suggestions are general, not medical advice. If something
+hurts, stop and ask a professional. Packaged foods can contain traces of what
+your diet rules out, so check labels, and ask a doctor or dietitian about
+allergies, health conditions, or how much to eat.
 
-See `spec.md` for the exact rules (R1–R13), and `docs/decisions/` for the
+See `spec.md` for the exact rules (R1–R14), and `docs/decisions/` for the
 reasoning behind key design choices.
 
 ## Run
