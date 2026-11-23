@@ -26,13 +26,14 @@ user's problem and `spec.md` for the numbered rules (R1.1, R2.1, …).
   - `streaks.js` weekly streaks, broken-streak state, comeback bonus,
     tough-love messages (R12)
   - `profiles.js` creating, editing, switching, deleting profiles; level; stats
-  - `limitations.js` protected areas, equipment, experience; dated history (R13.1)
+  - `limitations.js` protected areas, equipment, experience, diet; dated history (R13.1)
   - `exercises.js` built-in exercise catalog, "allowed", suggestions (R13.2–R13.6)
   - `challenges.js` weekly challenges, challenge XP, pace warning (R13.7–R13.11)
+  - `meals.js` built-in meal list, diet rules, focuses, meal suggestions (R14)
 - `src/storage.js` — `localStorage` load/save; takes a storage object so tests
   can pass a fake.
 - `src/main.js`, `src/style.css`, `index.html` — UI only; keep rules out of here.
-- `tests/` — Vitest files. `tests/ui.test.js` checks R5, R7, R12, and R13
+- `tests/` — Vitest files. `tests/ui.test.js` checks R5, R7, R12, R13, and R14
   markup by reading `index.html` and `src/style.css` as text. `tests/helpers.js`
   has `at(day, hour)`, `newProfile()`, `lift()`, and `SHAMING` (the word list
   every user-facing message is checked against).
@@ -41,7 +42,8 @@ user's problem and `spec.md` for the numbered rules (R1.1, R2.1, …).
 
 A profile stores only its details and raw records: `entries`, `weighIns`,
 `goals` (with habit `checks`), `goalNote`, and `limitations` (a dated history,
-so past weeks' challenges keep the limitations in force then). Totals (XP, PB
+so past weeks' challenges keep the limitations in force then; each record also
+holds the `diet` list). Nothing about meals is stored (R14.6). Totals (XP, PB
 levels, goal levels, records, goal progress, streaks, the comeback bonus,
 weekly challenges and their XP) are always
 recomputed from those, so deleting
@@ -61,9 +63,9 @@ XP is replayed from records, so changing any XP rule (the per-entry formula,
 `equipment`) rewrites every user's past XP and levels. Say so to the user when
 proposing such a change.
 
-Saved data lives under the `localStorage` key `grimlift:v4` (v3 and v2 are
-migrated on load; v1 is ignored). If the saved shape
-changes, use a new key (`grimlift:v5`) and ask the user whether to migrate the
+Saved data lives under the `localStorage` key `grimlift:v5` (v4, v3, and v2
+are migrated on load; v1 is ignored). If the saved shape
+changes, use a new key (`grimlift:v6`) and ask the user whether to migrate the
 old data or start fresh. Don't decide that yourself.
 
 ## Rules
@@ -106,7 +108,7 @@ old data or start fresh. Don't decide that yourself.
 - Start `npx vite --port 5179 --strictPort` in the repo (in the background).
 - Launch with `executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'`,
   `headless: true`. Collect `pageerror` events and take screenshots.
-- To seed data: open the app, `localStorage.setItem('grimlift:v4', …)`, then
+- To seed data: open the app, `localStorage.setItem('grimlift:v5', …)`, then
   call `page.reload()`. Navigating to `#/log` from `/` only changes the hash, so
   the app keeps its in-memory empty state and the seed is ignored.
 - Stop the server with PowerShell:
@@ -126,10 +128,12 @@ old data or start fresh. Don't decide that yourself.
   Passing it isn't enough: read the message yourself, since the word list only
   catches obvious insults.
 - The `#limits-form` checkbox and option values must match `AREAS`,
-  `EQUIPMENT`, and `EXPERIENCE` in `src/logic/limitations.js`, in the same
-  order (R13.1). The nav needs `a[data-route="train"]` and `#train-page` needs
+  `EQUIPMENT`, `EXPERIENCE`, and `DIETS` in `src/logic/limitations.js`, in
+  the same order (R13.1). The nav needs `a[data-route="train"]` and `#train-page` needs
   `#challenge-list`, `#train-warnings`, `#suggestion-list`,
-  `#train-goal-prompt`, and `#train-safety` (R13.13).
+  `#train-goal-prompt`, and `#train-safety` (R13.13). The nav needs
+  `a[data-route="fuel"]` and `#fuel-page` needs `#meal-list`, `#fuel-diet`,
+  `#fuel-goal-prompt`, and `#fuel-safety` saying "not medical advice" (R14.5).
 - `#log-page` in `index.html` must have exactly one `<form>`, exactly one
   `<button>` (the submit), and fields named exercise, sets, reps, weight, unit
   in that order (R7.1). Buttons added by JS at runtime aren't checked, so don't

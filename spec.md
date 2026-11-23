@@ -1,12 +1,28 @@
-# Grimlift — Specification (Round 5)
+# Grimlift — Specification (Round 6)
 
 Grimlift is a gym tracker with game-style progression. It runs locally in the
 browser, stores everything in `localStorage`, and needs no login or API keys.
 This spec turns the requirements in `problem.md` and later rounds into testable
 rules. Each rule has an ID; tests name the IDs they check.
 
-Out of scope: meal tracking, passwords, sync between devices, medical advice.
+Out of scope: meal tracking (logging what was eaten), calorie or macro
+counting, free-text health information, passwords, sync between devices,
+medical advice.
 *(Round 5: body-part guidance is no longer out of scope; R13 adds it.)*
+*(Round 6: meal suggestions are in scope; R14 adds them. Meal tracking is
+still out.)*
+
+## Round 6 changes at a glance
+
+- The limitations form gains a diet pick-list: vegetarian, vegan, no dairy,
+  no nuts, no gluten, no pork (R13.1, R14.1).
+- A new **Fuel** page suggests meals from a built-in list, chosen by the
+  profile's goals. Each meal says why it fits the goal, and no meal contains
+  anything the diet rules out (R14.2–R14.5).
+- The Fuel page says the suggestions are general and not medical advice
+  (R14.5).
+- Meals only suggest: no XP, nothing about meals is stored (R14.6).
+- Saved data moves to `grimlift:v5`; `grimlift:v4` data is migrated (R4.7).
 
 ## Round 5 changes at a glance
 
@@ -59,8 +75,9 @@ Out of scope: meal tracking, passwords, sync between devices, medical advice.
   calendar date.
 - **Training week**: a week with at least one logged entry.
 - **Streak**: a run of training weeks in a row, counted in weeks.
-- **Limitations**: the body areas a profile protects, the equipment it has, and
-  its experience level (R13.1).
+- **Limitations**: the body areas a profile protects, the equipment it has, its
+  experience level (R13.1), and the foods its diet rules out (R14.1).
+- **Meal**: one item in the built-in meal list (R14.2).
 - **Challenge**: a small weekly task the app sets from the profile's goals
   (R13.7).
 
@@ -102,9 +119,10 @@ Out of scope: meal tracking, passwords, sync between devices, medical advice.
 
 ## R4 — Data survives closing the app
 
-- **R4.1** *(changed in round 5)* Profiles and everything in them (entries,
-  weigh-ins, goals, habit check-ins, limitations), and which profile is active,
-  are saved to `localStorage` under the key `grimlift:v4` after every change.
+- **R4.1** *(changed in round 6)* Profiles and everything in them (entries,
+  weigh-ins, goals, habit check-ins, limitations including diet), and which
+  profile is active, are saved to `localStorage` under the key `grimlift:v5`
+  after every change.
 - **R4.2** On load, saved data is restored exactly.
 - **R4.3** If saved data is missing, unreadable, or the wrong shape, the app
   starts fresh (no profiles) instead of crashing.
@@ -119,7 +137,14 @@ Out of scope: meal tracking, passwords, sync between devices, medical advice.
   no `grimlift:v4` data. Everything is kept; each profile gets an empty
   limitations history (so it uses the defaults of R13.1). The v3 key is left
   untouched. If v4 data exists but is unreadable or the wrong shape, the app
-  starts fresh (R4.3) and does not fall back to v3.
+  starts fresh (R4.3) and does not fall back to v3. *(Round 6: migrated v3
+  data then goes through R4.7 too, and is used only when there is no v5 or v4
+  data.)*
+- **R4.7** *(new)* Round-5 data (key `grimlift:v4`) is migrated when there is
+  no `grimlift:v5` data. Everything is kept; each saved limitations record gets
+  an empty diet list (so nothing is ruled out). The v4 key is left untouched.
+  If v5 data exists but is unreadable or the wrong shape, the app starts fresh
+  (R4.3) and does not fall back to older keys.
 
 ## R5 — Readable type that stays gothic
 
@@ -265,14 +290,18 @@ Out of scope: meal tracking, passwords, sync between devices, medical advice.
     elbows, wrists (none by default);
   - **equipment available**: bodyweight only, dumbbells, or full gym (each
     includes the ones before it; default full gym);
-  - **experience**: beginner, intermediate, or advanced (default beginner).
+  - **experience**: beginner, intermediate, or advanced (default beginner);
+  - *(round 6)* **diet**: any of vegetarian, vegan, no dairy, no nuts, no
+    gluten, no pork (none by default). Diet is a fixed pick-list; there is no
+    free-text health field. Diet affects only meals (R14), never exercises or
+    challenges.
 
   Saving stores a dated record. If the latest record was saved this week, it is
   replaced; otherwise the new record is added. The *current* limitations are the
   latest record, or the defaults if there is none. The limitations *in force for
   a week* are the latest record saved before that week ended (defaults if none).
-  An unknown area, equipment, or experience value is rejected with a message,
-  and nothing is saved.
+  An unknown area, equipment, experience, or diet value is rejected with a
+  message, and nothing is saved.
 - **R13.2** *Exercise catalog.* The app has a built-in catalog. Each exercise
   has a name, one body part (legs, back, chest, shoulders, arms, core), the
   equipment it needs, the body areas it loads, optional other names, and
@@ -366,6 +395,45 @@ Out of scope: meal tracking, passwords, sync between devices, medical advice.
 - **R13.14** *Healthy push, not pressure.* Every challenge, warning, and note
   says what to do and passes the same check as R12.4 (no name-calling or
   shaming words).
+
+## R14 — Meal suggestions from goals *(new)*
+
+- **R14.1** *Diet rules.* Each diet option rules out food groups:
+  vegetarian → meat, pork, fish; vegan → meat, pork, fish, dairy, eggs;
+  no dairy → dairy; no nuts → nuts (peanuts count as nuts); no gluten → gluten;
+  no pork → pork. The diet in use is the current limitations' diet (R13.1).
+- **R14.2** *Meal list.* The app has a built-in meal list (no internet). Each
+  meal has a name, a slot (breakfast, lunch, dinner, or snack), the food
+  groups it contains (meat, pork, fish, dairy, eggs, nuts, gluten; a pork meal
+  also contains meat), and the focuses it fits (R14.3). For every focus and
+  every slot, at least one meal contains none of the food groups, so every diet
+  combination still gets a meal for every slot.
+- **R14.3** *Focus from goals.* Active goals (not reached) set the focuses, in
+  this order:
+  - **muscle**: any active lift goal. Why: high in protein, which helps muscle
+    repair and grow.
+  - **lean**: the oldest active body-weight goal aims lower than its start.
+    Why: filling, with protein and fibre, for fewer calories.
+  - **gain**: the oldest active body-weight goal aims higher than its start.
+    Why: energy-dense, so eating a bit more is easier.
+  - **fuel**: any active training or custom-habit goal, or no active goal at
+    all. Why: carbs and protein to power training and recovery.
+
+  Each focus names the goals it came from (none for fuel without goals).
+- **R14.4** *Suggested meals.* For each focus, the Fuel page suggests one meal
+  per slot, in the order breakfast, lunch, dinner, snack: the first meal in
+  list order that fits the focus and contains nothing the diet rules out. A
+  meal that contains something ruled out is never suggested. Each suggestion
+  shows the meal, its slot, and why it fits the focus.
+- **R14.5** *Fuel page.* A fourth page, "Fuel", shows the meals by focus and
+  the diet they're fitted to, with a link to change it. With no goals, it
+  invites the user to add one. It always says that the suggestions are
+  general, not medical advice, that packaged foods can still contain traces of
+  what the diet rules out, and to ask a doctor or dietitian about allergies,
+  conditions, or how much to eat.
+- **R14.6** *Suggest only.* Meals earn no XP and nothing about meals is
+  stored. There is no meal log and no calorie count. Every meal message passes
+  the same check as R12.4.
 
 ## Non-functional
 
