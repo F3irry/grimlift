@@ -3,6 +3,7 @@
 import { normalizeName, validateEntry } from './entries.js';
 import { toKg } from './units.js';
 import { goalLevels, reachedGoalIds, goalStatus } from './goals.js';
+import { comebacks, comebackText, COMEBACK_XP } from './streaks.js';
 
 export const BASE_XP = 20;
 export const XP_PER_SET = 5;
@@ -50,6 +51,7 @@ export function progressChange(before, after, now = new Date()) {
     });
   return {
     xpEarned: 0,
+    comeback: null,
     personalBest: false,
     goalsReached,
     levelBefore: profileLevel(before).level,
@@ -73,9 +75,10 @@ export function summarize(entries) {
   let pbLevels = 0;
   const bests = {};
   const pbIds = new Set();
+  const comebackIds = comebacks(entries); // R12.5
 
   for (const e of entries) {
-    totalXp += xpForEntry(e.sets);
+    totalXp += xpForEntry(e.sets) + (comebackIds.has(e.id) ? COMEBACK_XP : 0);
     const key = normalizeName(e.exercise);
     const prev = bests[key];
     if (!prev || isBetter(e, prev)) {
@@ -93,7 +96,7 @@ export function summarize(entries) {
     }
   }
 
-  return { totalXp, pbLevels, level: levelFor(totalXp, pbLevels), bests, pbIds };
+  return { totalXp, pbLevels, level: levelFor(totalXp, pbLevels), bests, pbIds, comebackIds };
 }
 
 function newId(now) {
@@ -112,6 +115,8 @@ export function logEntry(profile, input, now = new Date()) {
   const next = { ...profile, entries: [...profile.entries, entry] };
   const after = summarize(next.entries);
   const best = after.bests[normalizeName(entry.exercise)];
+  const lostWeeks = after.comebackIds.get(entry.id);
+  const comeback = lostWeeks ? { lostWeeks, bonusXp: COMEBACK_XP } : null; // R12.5
 
   return {
     ok: true,
@@ -120,7 +125,8 @@ export function logEntry(profile, input, now = new Date()) {
       ...progressChange(profile, next, now),
       entry,
       exerciseName: best.name,
-      xpEarned: xpForEntry(entry.sets),
+      xpEarned: xpForEntry(entry.sets) + (comeback ? comeback.bonusXp : 0),
+      comeback,
       personalBest: after.pbIds.has(entry.id),
       totalXp: after.totalXp,
     },
@@ -137,6 +143,10 @@ export function feedbackFor(result) {
   const events = [];
   if (result.xpEarned > 0) {
     events.push({ type: 'xp', amount: result.xpEarned, text: `+${result.xpEarned} XP` });
+  }
+  if (result.comeback) {
+    const { lostWeeks, bonusXp } = result.comeback;
+    events.push({ type: 'comeback', lostWeeks, bonusXp, text: comebackText(lostWeeks) }); // R12.6
   }
   if (result.personalBest) {
     const { weight, reps, unit } = result.entry;

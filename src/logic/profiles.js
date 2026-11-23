@@ -2,6 +2,7 @@
 import { UNITS, formatWeight } from './units.js';
 import { summarize, xpProgress, profileLevel } from './progression.js';
 import { validateBodyWeight, newWeighIn, currentBodyWeightKg } from './bodyweight.js';
+import { streakStatus } from './streaks.js';
 
 export const MAX_NAME = 40;
 export { profileLevel };
@@ -88,10 +89,11 @@ export function deleteProfile(app, id) {
 }
 
 /** R8.4: summary for the profile page; weights in the preferred unit (R3.5, R9.2). */
-export function profileStats(profile) {
+export function profileStats(profile, now = new Date()) {
   const s = summarize(profile.entries);
   const lvl = profileLevel(profile);
   const bw = currentBodyWeightKg(profile);
+  const streak = streakStatus(profile.entries, now); // R12.1
   const records = Object.values(s.bests)
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((b) => ({
@@ -111,6 +113,10 @@ export function profileStats(profile) {
     bodyWeight: bw == null ? null : formatWeight(bw, profile.unit),
     goalsReached: lvl.goalLevels,
     goalCount: profile.goals.length,
+    streak: streak.current,
+    bestStreak: streak.best,
+    streakBroken: streak.broken,
+    lostWeeks: streak.lostWeeks,
     records,
   };
 }
