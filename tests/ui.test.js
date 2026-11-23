@@ -124,3 +124,36 @@ describe('R13 train page and limitations markup', () => {
     expect(opts('experience')).toEqual(['beginner', 'intermediate', 'advanced']);
   });
 });
+
+describe('R14 fuel page and diet markup', () => {
+  it('R13.1 / R14.1: the limitations form has a diet pick-list and no free-text health field', () => {
+    const form = doc.querySelector('#profile-page #limits-form');
+    const diet = [...form.querySelectorAll('input[type="checkbox"][name="diet"]')].map((b) => b.value);
+    expect(diet).toEqual(['vegetarian', 'vegan', 'noDairy', 'noNuts', 'noGluten', 'noPork']);
+    expect(form.querySelectorAll('textarea, input[type="text"], input:not([type])')).toHaveLength(0);
+  });
+
+  it('R14.5: the nav has a Fuel link to the fuel page', () => {
+    const link = doc.querySelector('#nav a[data-route="fuel"]');
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('#/fuel');
+    expect(link.textContent.trim()).toBe('Fuel');
+  });
+
+  it('R14.5: the fuel page has meals, the diet summary, a goal prompt, and a not-medical-advice note', () => {
+    const page = doc.getElementById('fuel-page');
+    expect(page).not.toBeNull();
+    for (const id of ['meal-list', 'fuel-diet', 'fuel-goal-prompt']) {
+      expect(page.querySelector(`#${id}`), id).not.toBeNull();
+    }
+    const safety = page.querySelector('#fuel-safety').textContent;
+    expect(safety).toMatch(/not medical advice/i);
+    expect(safety).toMatch(/traces/i);
+    expect(safety).toMatch(/doctor or dietitian/i);
+  });
+
+  it('R14.6: the fuel page has no form or button (suggest only, no meal log)', () => {
+    const page = doc.getElementById('fuel-page');
+    expect(page.querySelectorAll('form, button, input')).toHaveLength(0);
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { STORAGE_KEY, V3_KEY, V2_KEY, LEGACY_KEY, loadApp, saveApp, migrateV2, migrateV3 } from '../src/storage.js';
+import { STORAGE_KEY, V4_KEY, V3_KEY, V2_KEY, LEGACY_KEY, loadApp, saveApp, migrateV2, migrateV3, migrateV4 } from '../src/storage.js';
 import { createApp, createProfile, activeProfile, replaceProfile, profileStats } from '../src/logic/profiles.js';
 import { logEntry } from '../src/logic/progression.js';
 import { addWeighIn } from '../src/logic/bodyweight.js';
@@ -31,19 +31,19 @@ function sampleApp() {
     p = logEntry(p, { exercise: 'Squat', sets: 3, reps: 5, weight, unit: 'lb' }, at(23, 10)).profile;
   }
   p = addWeighIn(p, '178', at(24)).profile;
-  p = setLimitations(p, { areas: ['knees'], equipment: 'dumbbells', experience: 'intermediate' }, at(24)).profile;
+  p = setLimitations(p, { areas: ['knees'], equipment: 'dumbbells', experience: 'intermediate', diet: ['vegan', 'noNuts'] }, at(24)).profile;
   return replaceProfile(app, { ...p, goalNote: 'Stay consistent' });
 }
 
 describe('R4 persistence', () => {
-  it('R4.1: saving writes JSON under the v4 key', () => {
+  it('R4.1: saving writes JSON under the v5 key', () => {
     const storage = fakeStorage();
-    expect(STORAGE_KEY).toBe('grimlift:v4');
+    expect(STORAGE_KEY).toBe('grimlift:v5');
     expect(saveApp(storage, sampleApp())).toBe(true);
     expect(JSON.parse(storage.raw.get(STORAGE_KEY)).profiles).toHaveLength(2);
   });
 
-  it('R4.1 / R4.2: profiles, entries, weigh-ins, goals, checks, note, and limitations survive a reload', () => {
+  it('R4.1 / R4.2: profiles, entries, weigh-ins, goals, checks, note, and limitations with diet survive a reload', () => {
     const storage = fakeStorage();
     const before = sampleApp();
     saveApp(storage, before);
@@ -54,6 +54,7 @@ describe('R4 persistence', () => {
     expect(p.goals[3].checks).toEqual(['2026-11-23']);
     expect(p.weighIns).toHaveLength(2);
     expect(p.limitations).toHaveLength(1);
+    expect(p.limitations[0].diet).toEqual(['vegan', 'noNuts']);
     expect(profileStats(p, at(24)).level).toBe(3); // 70 XP + 30 for the weigh-in challenge, + 1 PB level
   });
 
@@ -76,8 +77,13 @@ describe('R4 persistence', () => {
       withProfile({ limitations: [{ at: 'x', areas: ['neck'], equipment: 'gym', experience: 'beginner' }] }),
       withProfile({ limitations: [{ at: 'x', areas: ['knees', 'knees'], equipment: 'gym', experience: 'beginner' }] }),
       withProfile({ limitations: [{ at: 'x', areas: [], equipment: 'bands', experience: 'beginner' }] }),
-      withProfile({ limitations: [{ at: 'x', areas: [], equipment: 'gym', experience: 'pro' }] }),
+      withProfile({ limitations: [{ at: 'x', areas: [], equipment: 'gym', experience: 'pro', diet: [] }] }),
+      withProfile({ limitations: [{ at: 'x', areas: [], equipment: 'gym', experience: 'beginner' }] }),
+      withProfile({ limitations: [{ at: 'x', areas: [], equipment: 'gym', experience: 'beginner', diet: ['keto'] }] }),
+      withProfile({ limitations: [{ at: 'x', areas: [], equipment: 'gym', experience: 'beginner', diet: ['vegan', 'vegan'] }] }),
+      withProfile({ limitations: [{ at: 'x', areas: [], equipment: 'gym', experience: 'beginner', diet: 'vegan' }] }),
       JSON.stringify({ ...good, version: 3 }),
+      JSON.stringify({ ...good, version: 4 }),
     ];
     for (const raw of bad) {
       expect(loadApp(fakeStorage({ [STORAGE_KEY]: raw })), raw.slice(0, 60)).toEqual(createApp());
@@ -124,19 +130,19 @@ describe('R4.5 migrating round-2 data', () => {
     expect(app.profiles[1]).toMatchObject({ weighIns: [], goals: [], goalNote: '' });
   });
 
-  it('R4.5 / R4.6: loads v2 data when there is no v4 or v3 data, leaving the v2 key alone', () => {
+  it('R4.5 / R4.6 / R4.7: loads v2 data when there is no v5, v4, or v3 data, leaving the v2 key alone', () => {
     const raw = JSON.stringify(v2);
     const storage = fakeStorage({ [V2_KEY]: raw });
     const app = loadApp(storage, at(25));
     expect(V2_KEY).toBe('grimlift:v2');
-    expect(app.version).toBe(4);
+    expect(app.version).toBe(5);
     expect(app.profiles[0].limitations).toEqual([]);
     expect(activeProfile(app).name).toBe('Bryn');
     expect(app.profiles[0].entries).toEqual([entry]);
     expect(storage.raw.get(V2_KEY)).toBe(raw);
   });
 
-  it('R4.5: v4 data wins over v2 data', () => {
+  it('R4.5: v5 data wins over v2 data', () => {
     const storage = fakeStorage({ [V2_KEY]: JSON.stringify(v2) });
     saveApp(storage, sampleApp());
     expect(activeProfile(loadApp(storage)).name).toBe('Ash');
@@ -154,7 +160,7 @@ describe('R4.5 migrating round-2 data', () => {
 });
 
 describe('R4.6 migrating round-3/4 data', () => {
-  /** A v4 app turned back into the v3 shape it had before round 5. */
+  /** A v5 app turned back into the v3 shape it had before round 5. */
   function v3App() {
     const app = sampleApp();
     return {
@@ -173,29 +179,88 @@ describe('R4.6 migrating round-3/4 data', () => {
     expect(app.profiles).toEqual(v3.profiles.map((p) => ({ ...p, limitations: [] })));
   });
 
-  it('R4.6: loads v3 data when there is no v4 data, leaving the v3 key alone', () => {
+  it('R4.6 / R4.7: loads v3 data when there is no v5 or v4 data, leaving the v3 key alone', () => {
     const raw = JSON.stringify(v3App());
     const storage = fakeStorage({ [V3_KEY]: raw, [V2_KEY]: '{"version":2,"profiles":[],"activeProfileId":null}' });
     const app = loadApp(storage, at(25));
+    expect(app.version).toBe(5);
     expect(activeProfile(app).name).toBe('Ash');
     expect(activeProfile(app).entries).toHaveLength(2);
     expect(activeProfile(app).limitations).toEqual([]);
     expect(storage.raw.get(V3_KEY)).toBe(raw);
   });
 
-  it('R4.6: v4 data wins over v3 data', () => {
+  it('R4.6: v5 data wins over v3 data', () => {
     const storage = fakeStorage({ [V3_KEY]: JSON.stringify({ ...v3App(), activeProfileId: null }) });
     saveApp(storage, sampleApp());
     expect(activeProfile(loadApp(storage)).limitations).toHaveLength(1);
   });
 
-  it('R4.6: broken v4 data starts fresh instead of falling back to v3', () => {
+  it('R4.6: broken v5 data starts fresh instead of falling back to v3', () => {
     const storage = fakeStorage({ [STORAGE_KEY]: '{broken', [V3_KEY]: JSON.stringify(v3App()) });
     expect(loadApp(storage)).toEqual(createApp());
   });
 
   it('R4.6: broken v3 data gives a fresh app', () => {
     const storage = fakeStorage({ [V3_KEY]: '{"version":3,"profiles":[{"id":1}],"activeProfileId":null}' });
+    expect(loadApp(storage)).toEqual(createApp());
+  });
+});
+
+describe('R4.7 migrating round-5 data', () => {
+  /** A v5 app turned back into the v4 shape it had before round 6 (no diet). */
+  function v4App() {
+    const app = sampleApp();
+    return {
+      ...app,
+      version: 4,
+      profiles: app.profiles.map((p) => ({ ...p, limitations: p.limitations.map(({ diet, ...rest }) => rest) })),
+    };
+  }
+  const withEmptyDiet = (p) => ({ ...p, limitations: p.limitations.map((l) => ({ ...l, diet: [] })) });
+
+  it('R4.7: keeps everything and gives each limitations record an empty diet', () => {
+    const v4 = v4App();
+    const app = migrateV4(v4);
+    expect(V4_KEY).toBe('grimlift:v4');
+    expect(app.version).toBe(5);
+    expect(app.activeProfileId).toBe(v4.activeProfileId);
+    expect(app.profiles).toEqual(v4.profiles.map(withEmptyDiet));
+  });
+
+  it('R4.7: loads v4 data when there is no v5 data, leaving the v4 key alone', () => {
+    const raw = JSON.stringify(v4App());
+    const storage = fakeStorage({ [V4_KEY]: raw, [V3_KEY]: '{"version":3,"profiles":[],"activeProfileId":null}' });
+    const p = activeProfile(loadApp(storage, at(25)));
+    expect(p.name).toBe('Ash');
+    expect(p.entries).toHaveLength(2);
+    expect(p.goals).toHaveLength(4);
+    expect(p.limitations).toHaveLength(1);
+    expect(p.limitations[0]).toMatchObject({ areas: ['knees'], equipment: 'dumbbells', diet: [] });
+    expect(storage.raw.get(V4_KEY)).toBe(raw);
+  });
+
+  it('R4.7: XP and level are unchanged by the migration', () => {
+    const v4 = v4App();
+    const before = profileStats(withEmptyDiet(v4.profiles[0]), at(25));
+    const after = profileStats(activeProfile(loadApp(fakeStorage({ [V4_KEY]: JSON.stringify(v4) }), at(25))), at(25));
+    expect(after.totalXp).toBe(before.totalXp);
+    expect(after.level).toBe(before.level);
+  });
+
+  it('R4.7: v5 data wins over v4 data', () => {
+    const storage = fakeStorage({ [V4_KEY]: JSON.stringify({ ...v4App(), activeProfileId: null }) });
+    saveApp(storage, sampleApp());
+    expect(activeProfile(loadApp(storage)).limitations[0].diet).toEqual(['vegan', 'noNuts']);
+  });
+
+  it('R4.7: broken v5 data starts fresh instead of falling back to v4', () => {
+    const storage = fakeStorage({ [STORAGE_KEY]: '{broken', [V4_KEY]: JSON.stringify(v4App()) });
+    expect(loadApp(storage)).toEqual(createApp());
+  });
+
+  it('R4.7: broken v4 data gives a fresh app', () => {
+    const storage = fakeStorage({ [V4_KEY]: '{"version":4,"profiles":[{"id":1}],"activeProfileId":null}' });
     expect(loadApp(storage)).toEqual(createApp());
   });
 });

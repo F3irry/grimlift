@@ -6,14 +6,15 @@ import {
   hasEquipment,
   DEFAULT_LIMITATIONS,
   AREAS,
+  DIETS,
 } from '../src/logic/limitations.js';
 import { at, newProfile } from './helpers.js';
 
-const knees = { areas: ['knees'], equipment: 'gym', experience: 'beginner' };
+const knees = { areas: ['knees'], equipment: 'gym', experience: 'beginner', diet: [] };
 
 describe('R13.1 limitations', () => {
   it('R13.1: a profile with no saved limitations uses the defaults', () => {
-    expect(DEFAULT_LIMITATIONS).toEqual({ areas: [], equipment: 'gym', experience: 'beginner' });
+    expect(DEFAULT_LIMITATIONS).toEqual({ areas: [], equipment: 'gym', experience: 'beginner', diet: [] });
     expect(currentLimitations(newProfile())).toEqual(DEFAULT_LIMITATIONS);
   });
 
@@ -25,9 +26,9 @@ describe('R13.1 limitations', () => {
     const r = setLimitations(newProfile(), { areas: ['wrists', 'knees', 'wrists'], equipment: 'dumbbells', experience: 'advanced' }, at(24));
     expect(r.ok).toBe(true);
     expect(r.profile.limitations).toEqual([
-      { at: at(24).toISOString(), areas: ['knees', 'wrists'], equipment: 'dumbbells', experience: 'advanced' },
+      { at: at(24).toISOString(), areas: ['knees', 'wrists'], equipment: 'dumbbells', experience: 'advanced', diet: [] },
     ]);
-    expect(currentLimitations(r.profile)).toEqual({ areas: ['knees', 'wrists'], equipment: 'dumbbells', experience: 'advanced' });
+    expect(currentLimitations(r.profile)).toEqual({ areas: ['knees', 'wrists'], equipment: 'dumbbells', experience: 'advanced', diet: [] });
   });
 
   it('R13.1: a single area string (one ticked box) is accepted', () => {
@@ -41,6 +42,8 @@ describe('R13.1 limitations', () => {
       [{ ...knees, areas: ['neck'] }, /area/i],
       [{ ...knees, equipment: 'bands' }, /equipment/i],
       [{ ...knees, experience: 'pro' }, /experience/i],
+      [{ ...knees, diet: ['keto'] }, /diet/i],
+      [{ ...knees, diet: 'paleo' }, /diet/i],
     ];
     for (const [input, msg] of bad) {
       const r = setLimitations(p, input, at(24));
@@ -66,6 +69,27 @@ describe('R13.1 limitations', () => {
     expect(limitationsForWeek(p, '2026-11-23')).toEqual(knees);
     expect(limitationsForWeek(p, '2026-11-30').equipment).toBe('bodyweight');
     expect(limitationsForWeek(p, '2026-12-07').equipment).toBe('bodyweight');
+  });
+
+  it('R13.1: the six diet options, none by default', () => {
+    expect(DIETS).toEqual(['vegetarian', 'vegan', 'noDairy', 'noNuts', 'noGluten', 'noPork']);
+    expect(currentLimitations(newProfile()).diet).toEqual([]);
+  });
+
+  it('R13.1: diet keeps a fixed order and drops repeats; one ticked box or none is accepted', () => {
+    const r = setLimitations(newProfile(), { ...knees, diet: ['noPork', 'vegan', 'noPork'] }, at(24));
+    expect(currentLimitations(r.profile).diet).toEqual(['vegan', 'noPork']);
+    const one = setLimitations(newProfile(), { ...knees, diet: 'noNuts' }, at(24));
+    expect(currentLimitations(one.profile).diet).toEqual(['noNuts']);
+    const { diet, ...noDiet } = knees;
+    expect(currentLimitations(setLimitations(newProfile(), noDiet, at(24)).profile).diet).toEqual([]);
+  });
+
+  it('R13.1: diet is part of the dated record, so a past week keeps its diet', () => {
+    let p = setLimitations(newProfile(), { ...knees, diet: ['vegan'] }, at(24)).profile;
+    p = setLimitations(p, knees, at(31)).profile;
+    expect(limitationsForWeek(p, '2026-11-23').diet).toEqual(['vegan']);
+    expect(currentLimitations(p).diet).toEqual([]);
   });
 
   it('R13.1: each equipment level includes the ones before it', () => {
